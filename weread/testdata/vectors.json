@@ -1,0 +1,494 @@
+{
+ "weread_e": [
+  {
+   "in": "0",
+   "want": "cfc32da010cfcd208495488"
+  },
+  {
+   "in": "7",
+   "want": "8f132430178f14e45fce0f7"
+  },
+  {
+   "in": "42",
+   "want": "a1d32a6022aa1d0c6e83eb4"
+  },
+  {
+   "in": "119",
+   "want": "07e323f027707e1cd7dc674"
+  },
+  {
+   "in": "43208843",
+   "want": "c9c321c07293508bc9c79df"
+  },
+  {
+   "in": "32212941",
+   "want": "7c2325a071eb87cd7c28747"
+  },
+  {
+   "in": "999999999",
+   "want": "c8c325b083b9ac9ffc8ca94"
+  },
+  {
+   "in": "1000000000",
+   "want": "a4b32db075f5e100g010bcf"
+  },
+  {
+   "in": "123456789012345678",
+   "want": "9ef32160775bcd15g06bc614e136"
+  },
+  {
+   "in": "354716587199",
+   "want": "a1532b10815248babg02c715c"
+  },
+  {
+   "in": "132942561349",
+   "want": "44c3263077ec8ae1g0315dfae"
+  },
+  {
+   "in": "7701",
+   "want": "3503296041e15350a7f57c6"
+  },
+  {
+   "in": "314201584",
+   "want": "b90324d0812ba55f0b90f0d"
+  },
+  {
+   "in": "93917",
+   "want": "34632ac0516edd34698f74c"
+  },
+  {
+   "in": "5",
+   "want": "e4d32d5015e4da3b7fbb1fa"
+  },
+  {
+   "in": "5",
+   "want": "e4d32d5015e4da3b7fbb1fa"
+  },
+  {
+   "in": "324464662080",
+   "want": "a7432e0081356f016g025026d"
+  },
+  {
+   "in": "86274419",
+   "want": "44332b30752471734437298"
+  },
+  {
+   "in": "72957",
+   "want": "d4232ff0511cfdd429d4bdb"
+  },
+  {
+   "in": "80907",
+   "want": "e4732f80513c0be475e44ce"
+  },
+  {
+   "in": "49",
+   "want": "f4532c00231f457c545ad3c"
+  },
+  {
+   "in": "31153435721",
+   "want": "fb9328e081291a315g0215049"
+  },
+  {
+   "in": "10779805",
+   "want": "b20323206a47c9db20a4081"
+  },
+  {
+   "in": "412",
+   "want": "b92320b0319cb9228e094c0"
+  },
+  {
+   "in": "382028085776286",
+   "want": "49a32d70816c54935g05bd85e1ed"
+  },
+  {
+   "in": "8",
+   "want": "c9f326d018c9f0f895fb5e4"
+  },
+  {
+   "in": "37827218968623",
+   "want": "588323108168bf9bdg0510c0f162"
+  },
+  {
+   "in": "80741884486538",
+   "want": "9fb32cf0830203bdcg051520a78c"
+  },
+  {
+   "in": "98",
+   "want": "ed332ca0262ed3d2c2191f2"
+  },
+  {
+   "in": "650858",
+   "want": "842325a059ee6a842de046b"
+  },
+  {
+   "in": "MP_WXS_3286016687",
+   "want": "b4f42cb224d505f5758535f3332383630313636383721d"
+  },
+  {
+   "in": "wr_test",
+   "want": "9ce42200e77725f74657374654"
+  },
+  {
+   "in": "b",
+   "want": "92e428f026292eb5ffeee40"
+  },
+  {
+   "in": "c",
+   "want": "4a8423302634a8a08f0908f"
+  },
+  {
+   "in": "abc",
+   "want": "900427206616263900156d7"
+  },
+  {
+   "in": "三体",
+   "want": "9ce42d1084e094f539cede6"
+  },
+  {
+   "in": "章节-2_x",
+   "want": "42742ed107ae082822d325f78e59"
+  },
+  {
+   "in": "7y",
+   "want": "74a42cc04377974a93390ba"
+  }
+ ],
+ "weread_sign": [
+  {
+   "query": "pc=123&prevChapter=530823945&ps=false&r=c9c321c07293508bc9c79df&sc=false&st=false&x=abc-_~.z&yy=0",
+   "want": "9cd5b5a5"
+  },
+  {
+   "query": "ct=abc-_~.z&x=true",
+   "want": "2bac69ea"
+  },
+  {
+   "query": "sc=true&st=0",
+   "want": "2a0aff50"
+  },
+  {
+   "query": "c=123&ct=true&prevChapter=c9c321c07293508bc9c79df&ps=abc-_~.z&r=%E4%B8%AD%E6%96%87%E5%80%BC&st=0",
+   "want": "6869fd6c"
+  },
+  {
+   "query": "b=123&pc=325326434&prevChapter=true&st=459459092",
+   "want": "578a6aac"
+  },
+  {
+   "query": "c=true&ct=123&pc=abc-_~.z",
+   "want": "4b787532"
+  },
+  {
+   "query": "c=123&ct=c9c321c07293508bc9c79df&ps=0&r=876400837&sc=abc-_~.z&st=abc-_~.z&x=0&yy=c9c321c07293508bc9c79df",
+   "want": "82fb4fd4"
+  },
+  {
+   "query": "b=0&yy=%E4%B8%AD%E6%96%87%E5%80%BC",
+   "want": "b993e820"
+  },
+  {
+   "query": "prevChapter=abc-_~.z&st=%E4%B8%AD%E6%96%87%E5%80%BC",
+   "want": "e406d8b8"
+  },
+  {
+   "query": "c=false&ct=abc-_~.z&pc=false&prevChapter=abc-_~.z&ps=123&sc=0&st=0&yy=0",
+   "want": "6f89d8cd"
+  },
+  {
+   "query": "ct=c9c321c07293508bc9c79df&st=421574507&yy=123",
+   "want": "cb627514"
+  },
+  {
+   "query": "b=c9c321c07293508bc9c79df&c=true&pc=false&prevChapter=%E4%B8%AD%E6%96%87%E5%80%BC&ps=%E4%B8%AD%E6%96%87%E5%80%BC&sc=true&yy=0",
+   "want": "9107a119"
+  },
+  {
+   "query": "pc=abc-_~.z&prevChapter=true&ps=true",
+   "want": "9e880b7c"
+  },
+  {
+   "query": "b=abc-_~.z&ct=123&pc=c9c321c07293508bc9c79df&r=0&x=abc-_~.z",
+   "want": "f003d5bb"
+  },
+  {
+   "query": "c=abc-_~.z&ct=true&pc=true&prevChapter=false&ps=377540495&sc=abc-_~.z&st=123&yy=c9c321c07293508bc9c79df",
+   "want": "8cd65196"
+  },
+  {
+   "query": "c=true&pc=301550527&prevChapter=123&ps=%E4%B8%AD%E6%96%87%E5%80%BC&sc=c9c321c07293508bc9c79df&st=813638546&x=%E4%B8%AD%E6%96%87%E5%80%BC&yy=c9c321c07293508bc9c79df",
+   "want": "784f50fc"
+  },
+  {
+   "query": "pc=123&yy=abc-_~.z",
+   "want": "2b578bee"
+  },
+  {
+   "query": "ct=abc-_~.z&sc=0",
+   "want": "2a4746a8"
+  },
+  {
+   "query": "b=%E4%B8%AD%E6%96%87%E5%80%BC&c=0&prevChapter=123&ps=%E4%B8%AD%E6%96%87%E5%80%BC&yy=c9c321c07293508bc9c79df",
+   "want": "c908b586"
+  },
+  {
+   "query": "c=123&pc=573875238&prevChapter=false&ps=true&r=%E4%B8%AD%E6%96%87%E5%80%BC&sc=123&st=c9c321c07293508bc9c79df&x=true",
+   "want": "ab492947"
+  }
+ ],
+ "sorted_query": [
+  {
+   "params": {
+    "st": "a b+c/d?e=f&g=h",
+    "r": "-_.~"
+   },
+   "want": "r=-_.~&st=a%20b%2Bc%2Fd%3Fe%3Df%26g%3Dh"
+  },
+  {
+   "params": {
+    "prevChapter": true
+   },
+   "want": "prevChapter=true"
+  },
+  {
+   "params": {
+    "ps": "a b+c/d?e=f&g=h",
+    "c": "c9c321c07293508bc9c79df",
+    "u": false,
+    "sc": true
+   },
+   "want": "c=c9c321c07293508bc9c79df&ps=a%20b%2Bc%2Fd%3Fe%3Df%26g%3Dh&sc=true&u=false"
+  },
+  {
+   "params": {
+    "zz": "100",
+    "ct": "0",
+    "prevChapter": true,
+    "ps": null,
+    "c": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "sc": "c9c321c07293508bc9c79df",
+    "st": true,
+    "u": "100",
+    "pc": "中文测试"
+   },
+   "want": "c=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&ct=0&pc=%E4%B8%AD%E6%96%87%E6%B5%8B%E8%AF%95&prevChapter=true&ps=null&sc=c9c321c07293508bc9c79df&st=true&u=100&zz=100"
+  },
+  {
+   "params": {
+    "ps": "1"
+   },
+   "want": "ps=1"
+  },
+  {
+   "params": {
+    "sc": true,
+    "zz": 42,
+    "pc": "中文测试",
+    "st": "0"
+   },
+   "want": "pc=%E4%B8%AD%E6%96%87%E6%B5%8B%E8%AF%95&sc=true&st=0&zz=42"
+  },
+  {
+   "params": {
+    "u": "c9c321c07293508bc9c79df",
+    "sc": "1",
+    "zz": true,
+    "prevChapter": false,
+    "st": "0",
+    "b": "1",
+    "pc": "c9c321c07293508bc9c79df"
+   },
+   "want": "b=1&pc=c9c321c07293508bc9c79df&prevChapter=false&sc=1&st=0&u=c9c321c07293508bc9c79df&zz=true"
+  },
+  {
+   "params": {
+    "c": null,
+    "pc": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+    "zz": "0",
+    "sc": "0",
+    "r": "a b+c/d?e=f&g=h",
+    "u": "1",
+    "ps": "a b+c/d?e=f&g=h",
+    "b": "c9c321c07293508bc9c79df"
+   },
+   "want": "b=c9c321c07293508bc9c79df&c=null&pc=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&ps=a%20b%2Bc%2Fd%3Fe%3Df%26g%3Dh&r=a%20b%2Bc%2Fd%3Fe%3Df%26g%3Dh&sc=0&u=1&zz=0"
+  },
+  {
+   "params": {
+    "ct": false,
+    "zz": "a b+c/d?e=f&g=h",
+    "sc": "中文测试",
+    "st": "0",
+    "ps": false,
+    "prevChapter": 42,
+    "c": "中文测试"
+   },
+   "want": "c=%E4%B8%AD%E6%96%87%E6%B5%8B%E8%AF%95&ct=false&prevChapter=42&ps=false&sc=%E4%B8%AD%E6%96%87%E6%B5%8B%E8%AF%95&st=0&zz=a%20b%2Bc%2Fd%3Fe%3Df%26g%3Dh"
+  },
+  {
+   "params": {
+    "b": "-_.~",
+    "ps": "100",
+    "zz": "a b+c/d?e=f&g=h",
+    "prevChapter": false
+   },
+   "want": "b=-_.~&prevChapter=false&ps=100&zz=a%20b%2Bc%2Fd%3Fe%3Df%26g%3Dh"
+  }
+ ],
+ "decode": [
+  {
+   "encoded": "APGRpdiL2bGFQ2z0icmVhZgJyzchhcHRlckNvbnRlbnQiPbGwPuesrOS4gOeroCDmtYvor5XmlofmnKw8L3A-PHA-SGVsjx8GVmFtcBjgd29ybGQg5Dsg5aW9PC9wPjwvZGl2Pg==",
+   "want": "<div class=\"readerChapterContent\"><p>第一章 测试文本</p><p>Hello &amp; world 你好</p></div>"
+  },
+  {
+   "encoded": "A56ys5LiA56uaPQovDIDjgIDov5nmmK_lhajop5LnqbrmoLznvKnrg5vnmoTmrjgmlofjgIINCuOAgOOAgOesrOS6jOauteOAgg==",
+   "want": "第一章\r\n　　这是全角空格缩进的正文。\r\n　　第二段。"
+  },
+  {
+   "encoded": "A==YQ",
+   "want": "a"
+  },
+  {
+   "encoded": "Acchvnh0gdHQ2OiB4",
+   "want": "short txt: x"
+  }
+ ],
+ "shards": {
+  "e0": "F78CFC6F32A11A012E281436861DED91APHA-56ysMOautSDlhoXlrrkgMDwvcD48cD7nrKwx5q61IOWGheWuuSAxPC9wPjxwPuesrDLmrrUg5YaF5a65IDQ8L3A-PHA-56ysM-autSDlhoXlrrkgOTwvcD48cD7nrKw05q61IOWGheWuuSAxNjwvcD48cD7nrKw15q61IOWGheWuuSAyNTwvcD48cD7nrKw25q61IOWGheWuuSAzNjwvcD48cD7nrKw35q61IOWGheWuuSA0OTwvcD48cD7nrKw45q61IOWGheWuuSA2NDwvcD48cD7nrKw55q61IOWGheWuuSA4MTwvcD48cD7nrKwxMOautSDlhoXlrrkgMTAwPC9wPjxwPuesrDEx5q61IOWGheWuuSAxMjE8L3A-PHA-56ysMTLmrrUg5YaF5a65IDE0NDwvcD48cD7nrKwxM-autSDlhoXlrrkgMTY5PC9wPjxwPuesrDE05q61IOWGheWuuSAxOTY8L3A-PHA-56ysMTXmrrUg5YaF5a65IDIyNTwvcD48cD7nrKwxNuautSDlhoXlrrkgMjU2PC9wPjxwPuesrDE35q61IOWGheWuuSAyODk8L3A-PHA-56ysMTjmrrUg5YaF5a65IDMyNDwvcD48cD7nrKwxOeautSDlhoXlrrkgMzYxPC9wPjxwPuesrDIw5q61IOWGheWuuSA0MDA8L3A-PHA-56ysMjHmrrUg5YaF5a65IDQ0MTwvcD48cD7nrKwyMuautSDlhoXlrrkgNDg0PC9wPjxwPuesrDIz5q61IOWGheWuuSA1Mjk8L3A-PHA-56ysMjTmrrUg5YaF5a65IDU3NjwvcD48cD7nrKwyNeautSDlhoXlrrkgNjI1PC9wPjxwPuesrDI25q61IOWGheWuuSA2NzY8L3A-PHA-56ysMjfmrrUg5YaF5a65IDcyOTwvcD48cD7nrKwyOOautSDlhoXlrrkgNzg0PC9TkjxwPuesrDI55q61IOWGheWuuSA4NDE8L3A-PHA-56ysMzDmrrUg5YaF5a65IDkwMDwvcD48cD7nrKwzMeDItSDlhoXlrrkgOTYxPC9wPjxwPuesrDMy5q61IOWGheWuuSAxMau0PC9wPjxwPuesrDMz5q61IOWGheWuuSAxMDg5PC9wPjxwPuesrDM05q61IOWGheWuuSAxMTU2PC9wPjxwPuesrDM15q61IOWGheWuuSAxMjI1PC9wPjxwPuesrDM25q61IOWGheWuuSAxMjk2PC9wPjxwPuesrDM35q61IOWGheWuuSAxM615PC9wPjxwPuesrDM45q61IOWGheWuuSAxNDQ0PC9wPjxwPuesrDM55q61IOWGheWuuSAxNTIxPC9wPjxwPuesrDQw5q61IOWGheWuuSAxNjAwPC9wPjxwPuesrDQx5q61IOWGheWuuSAxNjgxPC9wPjxwPuesrDQy5q61IOWGheWuuSAxNzY0PC9wPjxwPuesrDQz5q61IOWGheWuuSAxODQ5PC9wPjxwPuesrDQ05q61IOWGheWuuSAxOTM2PC9wPjxwPuesrDQ15q61IOWGheWuuSAyMDI1PC9wPjxwPuesrDQ25q61IOWGheWuuSAyMTE2PC9wPjxwPuesrDQ35q61IOWGheWuuSAyMjA5PC9wPjxwPuesrDQ45q61IOWGheWuuSAyMzA0PC9wPjxwPuesrDQ55q61IOWGheWuuSAyNDAxPC9wPjxwPuesrDUw5q61IOWGheWuuSAyNTAwPC9wPjxwPuesrDUx5q61IOWGheWuuSAyNjAxPC9wPjxwPuesrDUy5q61IOWGheWuuSAyNzA0PC9wPjxwPuesrDUz5q61IOWGheWuuSAyODA5PC9wPjxwPuesrDU05q61IOWGheWuuSAyOTE2PC9wPjxwPuesrDU15q61IOWGheWuuSAzMDI1PC9wPjxwPuesrDU25q61IOWGheWuuSAzMTM2PC9wPjxwPuesrDU35q61IOWGheWuuSAzMjQ5PC9wPjxwPuesrDU45q61IOWGheWuuSAzMzY0PC9wPjxwPuesrDU55q61IOWGheWuuSAzNDgxPC9wPjxwPuesrDYw5q61IOWGheWuuSAzNjAwPC9wPjxwPuesrDYx5q61IOWGheWuuSAzNzIxPC9wPjxwPuesrDYy5q61IOWGheWuuSAzODQ0PC9wPjxwPuesrDYz5q61IOWGheWuuSAzOTY5PC9wPjxwPuesrDY05q61IOWGheWuuSA0MDk2PC9wPjxwPuesrDY15q61IOWGheWuuSA0MjI1PC9wPjxwPuesrDY25q61IOWGheWuuSA0MzU2PC9wPjxwPuesrDY35q61IOWGheWuuSA0NDg5PC9wPjxwPuesrDY45q61IOWGheWuuSA0NjI0PC9wPjxwPuesrDY55q61IOWGheWuuSA0NzYxPC9wPjxwPuesrDcw5q61IOWGheWuuSA0OTAwPC9wPjxwPuesrDcx5q61IOWGheWuuSA1MDQxPC9wPjxwPuesrDcy5q61IOWGheWuuSA1MTg0PC9wPjxwPuesrDcz5q61IOWGheWuuSA1MzI5PC9wPjxwPuesrDc05q61IOWGheWuuSA1NDc2PC9wPjxwPuesrDc15q61IOWGheWuuSA1NjI1PC9wPjxwPuesrDc25q61IOWGheWuuSA1Nzc2PC9wPjxwPuesrDc35q61IOWGheWuuSA1OTI5PC9wPjxwPuesrDc45q61IOWGheWuuSA2MDg0PC9wPjxwPuesrDc55q61IOWGheWuuSA2MjQxPC9wPjxwPuesrDgw5q61IOWGheWuuSA2NDAwPC9wPjxwPuesrDgx5qzYIOWGheWuuSA2NTYxPC9wPjxwPuesrDgy5q61IOWGheWuuSA2NzI0PC9wPjxwPuesrDgz5q61IOWGheWuuSA2ODg5PC9wPjxwPuesrDg05q61IOWGheWuuSA3MDU2PC9wPjxwPuesrDg15q61IOWGheWuuSA3MjI1PC9wPjxwPuesrDg25q61IOWGheWuuSA3Mzk2PC9wPjxwPuesrDg35q61IOWGheWuuSA3NTY5PC9wPjxwPuesrDg45q61IOWGheWuuSA3NzQ0PC9wPjxwPuesrDg55q61IOWGheWuuSA3OTIxPC9wPjxwPuesrDkw5q61IOWGheWuuSA4MTAwPC9wPjxwPuesrDkx5q61IOWGheWuuSA4MjgxPC9wPjxwPuesrDky5q61IOWGheWuuSA4NDY0PC9wPjxwPuesrDkz5q61IOWGheWuuSA4NjQ5PC9wPjxwPuesrDk05q61IOWGheWuuSA4ODM2PC9wPjxwPuesrDk15q61IOWGheWuuSA5MDI1PC9wPjxwPuesrDk25q61IOWGheWuuSA5MjE2PC9wPjxwPuesrDk35q61IOWGheWuuSA5NDA5PC9wPjxwPuesrDk45q61IOWGheWuuSA5NjA0PC9wPjxwPuesrDk55q61IOWGheWuuSA5ODAxPC9wPjxwPuesrDEwMOautSDlhoXlrrkgMTAwMDA8L3A-PHA-56ysMTAx5q61IOWGheWuuSAxMDIwMTwvcD48cD7nrKwxMDLmrrUg5YaF5a65IDEwNDA0PC9wPjxwPuesrDEwM-autSDlhoXlrrkgMTA2MDk8L3A-PHA-56ysMTA05q6",
+  "e1": "F27C9051CEDBF300DB39ED9B920FEAC01IOWGheWuuSAxMDgxNjwvcD48cD7nrKwxMDXmrrUg5YaF5a65IDExMDI1PC9wPjxwPuesrDEwNuautSDlhoXlrrkgMTEyMzY8L3A-PHA-56ysMTA35q61IOWGheWuuSAxMTQ0OTwvcD48cD7nrKwxMDjmrrUg5YaF5a65IDExNjY0PC9wPjxwPuesrDEwOeautSDlhoXlrrkgMTE4ODE8L3A-PHA-56ysMTEw5q61IOWGheWuuSAxMjEwMDwvcD48cD7nrKwxMTHmrrUg5YaF5a65IDEyMzIxPC9wPjxwPuesrDExMuautSDlhoXlrrkgMTI1NDQ8L3A-PHA-56ysMTEz5q61IOWGheWuuSAxMjc2OTwvcD48cD7nrKwxMTTmrrUg5YaF5a65IDEyOwP2PC9wPjxwPuesrDExNeautSDlhoXlrrkgMTMyMjU8L3A-PHA-56ysMTE25q61IOWGheWuuSAxMzQ1NjwvcD48cD7nrKwxMTfmrrUg5YaF5a65IDEzNjg5PC9wPjxwPuesrDExOOautSDlhoXlrrkgMTM5MjQ8L3A-PHA-56ysMTE55q61IOWGheWuuSAxNDE2MTwvcD48cD7nrKwxMjDmrrUg5YaF5a65IDE0NDAwPC9wPjxwPuesrDEyMeautSDlhoXlrrkgMTQ2NDE8L3A-PHA-56ysMTIy5q61IOWGheWuuSAxNDg4NDwvcD48cD7nrKwxMjPmrrUg5YaF5a65IDE1MTI5PC9wPjxwPuesrDEyNOautSDlhoXlrrkgMTUzNzY8L3A-PHA-56ysMTI15q61IOWGheWuuSAxNTYyNTwvcD48cD7nrKwxMjbmrrUg5YaF5a65IDE1ODc2PC9wPjxwPuesrDEyN-autSDlhoXlrrkgMTYxMjk8L3A-PHA-56ysMTI45q61IOWGheWuuSAxNjM4NDwvcD48cD7nrKwxMjnmrrUg5YaF5a65IDE2NjQxPC9wPjxwPuesrDEzMOautSDlhoXlrrkgMTY5MDA8L3A-PHA-56ysMTMx5q61IOWGheWuuSAxNzE2MTwvcD48cD7nrKwxMzLmrrUg5YaF5a65IDE3NDI0PC9wPjxwPuesrDEzM-autSDlhoXlrrkgMTc2ODk8L3A-PHA-56ysMTM05q61IOWGheWuuSAxNzk1NjwvcD48cD7nrKwxMzXmrrUg5YaF5a65IDE4MjI1PC9wPjxwPuesrDEzNuautSDlhoXlrrkgMTg0OTY8L3A-PHA-56ysMTM35q61IOWGheWuuSAxODc2OTwvcD48cD7nrKwxMzjmrrUg5YaF5a65IDE5MDQ0PC9wPjxwPuesrDEzOeautSDlhoXlrrkgMTkzMjE8L3A-PHA-56ysMTQw5q61IOWGheWuuSAxOTYwMDwvcD48cD7nrKwxNDHmrrUg5YaF5a65IDE5ODgxPC9wPjxwPuesrDE0MuautSDlhoXlrrkgMjAxNjQ8L3A-PHA-56ysMTQz5q61IOWGheWuuSAyMDQ0OTwvcD48cD7nrKwxNDTmrrUg5YaF5a65IDIwNzM2PC9wPjxwPuesrDE0NeautSDlhoXlrrkgMjEwMjU8L3A-PHA-56ysMTQ25q61IOWGheWuuSAyMTMxNjwvcD48cD7nrKwxNDfmrrUg5YaF5a65IDIxNjA5PC9wPjxwPuesrDE0OOautSDlhoXlrrkgMjE5MDQ8L3A-PHA-56ysMTQ55q61IOWGheWuuSAyMjIwMTwvcD48cD7nrKwxNTDmrrUg5YaF5a65IDIyNTAwPC9wPjxwPuesrDE1MeautSDlhoXlrrkgMjI4MDE8L3A-PHA-56ysMTUy5q61IOWGheWuuSAyMzEwNDwvcD48cD7nrKwxNTPmrrUg5YaF5a65IDIzNDA5PC9wPjxwPuesrDE1NOautSDlhoXlrrkgMjM3MTY8L3A-PHA-56ysMTU15q61IOWGheWuuSAyNDAyNTwvcD48cD7nrKwxNTbmrrUg5YaF5a65IDI0MzM2PC9wPjxwPuesrDE1N-autSDlhoXlrrkgMjQ2NDk8L3A-PHA-56ysMTU45q61IOWGheWuuSAyNDk2NDwvcD48cD7nrKwxNTnmrrUg5YaF5a65IDI1MjgxPC9wPjxwPuesrDE2MOautSDlhoXlrrkgMjU2MDA8L3A-PHA-56ysMTYx5q61IOWGheWuuSAyNTkyMTwvcD48cD7nrKwxNjLmrrUg5YaF5a65IDI2MjQ0PC9wPjxwPuesrDE2M-autSDlhoXlrrkgMjY1Njk8L3A-PHA-56ysMTY05q61IOWGheWuuSAyNjg5NjwvcD48cD7nrKwxNjXmrrUg5YaF5a65IDI3MjI1PC9wPjxwPuesrDE2NuautSDlhoXlrrkgMjc1NTY8L3A-PHA-56ysMTY35q61IOWGheWuuSAyNzg4OTwvcD48cD7nrKwxNjjmrrUg5YaF5a65IDI4MjI0PC9wPjxwPuesrDE2OeautSDlhoXlrrkgMjg1NjE8L3A-PHA-56ysMTcw5q61IOWGheWuuSAyODkwMDwvcD48cD7nrKwxNzHmrrUg5YaF5a65IDI5MjQxPC9wPjxwPuesrDE3MuautSDlhoXlrrkgMjk1ODQ8L3A-PHA-56ysMTcz5q61IOWGheWuuSAyOTkyOTwvcD48cD7nrKwxNzTmrrUg5YaF5a65IDMwMjc2PC9wPjxwPuesrDE3NeautSDlhoXlrrkgMzA2MjU8L3A-PHA-56ysMTc25q61IOWGheWuuSAzMDk3NjwvcD48cD7nrKwxNzfmrrUg5YaF5a65IDMxMzI5PC9wPjxwPuesrDE3OOautSDlhoXlrrkgMzE2ODQ8L3A-PHA-56ysMTc55q61IOWGheWuuSAzMjA0MTwvcD48cD7nrKwxODDmrrUg5YaF5a65IDMyNDAwPC9wPjxwPuesrDE4MeautSDlhoXlrrkgMzI3NjE8L3A-PHA-56ysMTgy5q61IOWGheWuuSAzMzEyNDwvcD48cD7nrKwxODPmrrUg5YaF5a65IDMzNDg5PC9wPjxwPuesrDE4NOautSDlhoXlrrkgMzM4NTY8L3A-PHA-56ysMTg15q61IOWGheWuuSAzNDIyNTwvcD48cD7nrKwxODbmrrUg5YaF5a65IDM0NTk2PC9wPjxwPuesrDE4N-autSDlhoXlrrkgMzQ5Njk8L3A-PHA-56ysMTg45q61IOWGheWuuSAzNTM0NDwvcD48cD7nrKwxODnmrrUg5YaF5a65IDM1NzIxPC9wPjxwPuesrDE5MOautSDlhoXlrrkgMzYxMDA8L3A-PHA-56ysMTkx5q61IOWGheWuuSAzNjQ4MTwvcD48cD7nrKwxOTLmrrUg5YaF5a65IDM2ODY0PC9wPjxwPuesrDE5M-autSDlhoXlrrkgMzcyNDk8L3A-PHA-56ysMTk05q61IOWGheWuuSAzNzYzNjwvcD48cD7nrKwxOTXmrrUg5YaF5a65IDM4MDI1PC9wPjxwPuesrDE5NuautSDlhoXlrrkgMzg0MTY8L3A-PHA-56ysMTk35q61IOWGheWuuSAzODgwOTwvcD48cD7nrKwxOTjmrrUg5YaF5a65IDM5MjA0PC9wPjxwPuesrDE5OeautSDlhoXlrrkgMzk2MDE8L3A-",
+  "e3": "",
+  "want": "<p>第0段 内容 0</p><p>第1段 内容 1</p><p>第2段 内容 4</p><p>第3段 内容 9</p><p>第4段 内容 16</p><p>第5段 内容 25</p><p>第6段 内容 36</p><p>第7段 内容 49</p><p>第8段 内容 64</p><p>第9段 内容 81</p><p>第10段 内容 100</p><p>第11段 内容 121</p><p>第12段 内容 144</p><p>第13段 内容 169</p><p>第14段 内容 196</p><p>第15段 内容 225</p><p>第16段 内容 256</p><p>第17段 内容 289</p><p>第18段 内容 324</p><p>第19段 内容 361</p><p>第20段 内容 400</p><p>第21段 内容 441</p><p>第22段 内容 484</p><p>第23段 内容 529</p><p>第24段 内容 576</p><p>第25段 内容 625</p><p>第26段 内容 676</p><p>第27段 内容 729</p><p>第28段 内容 784</p><p>第29段 内容 841</p><p>第30段 内容 900</p><p>第31段 内容 961</p><p>第32段 内容 1024</p><p>第33段 内容 1089</p><p>第34段 内容 1156</p><p>第35段 内容 1225</p><p>第36段 内容 1296</p><p>第37段 内容 1369</p><p>第38段 内容 1444</p><p>第39段 内容 1521</p><p>第40段 内容 1600</p><p>第41段 内容 1681</p><p>第42段 内容 1764</p><p>第43段 内容 1849</p><p>第44段 内容 1936</p><p>第45段 内容 2025</p><p>第46段 内容 2116</p><p>第47段 内容 2209</p><p>第48段 内容 2304</p><p>第49段 内容 2401</p><p>第50段 内容 2500</p><p>第51段 内容 2601</p><p>第52段 内容 2704</p><p>第53段 内容 2809</p><p>第54段 内容 2916</p><p>第55段 内容 3025</p><p>第56段 内容 3136</p><p>第57段 内容 3249</p><p>第58段 内容 3364</p><p>第59段 内容 3481</p><p>第60段 内容 3600</p><p>第61段 内容 3721</p><p>第62段 内容 3844</p><p>第63段 内容 3969</p><p>第64段 内容 4096</p><p>第65段 内容 4225</p><p>第66段 内容 4356</p><p>第67段 内容 4489</p><p>第68段 内容 4624</p><p>第69段 内容 4761</p><p>第70段 内容 4900</p><p>第71段 内容 5041</p><p>第72段 内容 5184</p><p>第73段 内容 5329</p><p>第74段 内容 5476</p><p>第75段 内容 5625</p><p>第76段 内容 5776</p><p>第77段 内容 5929</p><p>第78段 内容 6084</p><p>第79段 内容 6241</p><p>第80段 内容 6400</p><p>第81段 内容 6561</p><p>第82段 内容 6724</p><p>第83段 内容 6889</p><p>第84段 内容 7056</p><p>第85段 内容 7225</p><p>第86段 内容 7396</p><p>第87段 内容 7569</p><p>第88段 内容 7744</p><p>第89段 内容 7921</p><p>第90段 内容 8100</p><p>第91段 内容 8281</p><p>第92段 内容 8464</p><p>第93段 内容 8649</p><p>第94段 内容 8836</p><p>第95段 内容 9025</p><p>第96段 内容 9216</p><p>第97段 内容 9409</p><p>第98段 内容 9604</p><p>第99段 内容 9801</p><p>第100段 内容 10000</p><p>第101段 内容 10201</p><p>第102段 内容 10404</p><p>第103段 内容 10609</p><p>第104段 内容 10816</p><p>第105段 内容 11025</p><p>第106段 内容 11236</p><p>第107段 内容 11449</p><p>第108段 内容 11664</p><p>第109段 内容 11881</p><p>第110段 内容 12100</p><p>第111段 内容 12321</p><p>第112段 内容 12544</p><p>第113段 内容 12769</p><p>第114段 内容 12996</p><p>第115段 内容 13225</p><p>第116段 内容 13456</p><p>第117段 内容 13689</p><p>第118段 内容 13924</p><p>第119段 内容 14161</p><p>第120段 内容 14400</p><p>第121段 内容 14641</p><p>第122段 内容 14884</p><p>第123段 内容 15129</p><p>第124段 内容 15376</p><p>第125段 内容 15625</p><p>第126段 内容 15876</p><p>第127段 内容 16129</p><p>第128段 内容 16384</p><p>第129段 内容 16641</p><p>第130段 内容 16900</p><p>第131段 内容 17161</p><p>第132段 内容 17424</p><p>第133段 内容 17689</p><p>第134段 内容 17956</p><p>第135段 内容 18225</p><p>第136段 内容 18496</p><p>第137段 内容 18769</p><p>第138段 内容 19044</p><p>第139段 内容 19321</p><p>第140段 内容 19600</p><p>第141段 内容 19881</p><p>第142段 内容 20164</p><p>第143段 内容 20449</p><p>第144段 内容 20736</p><p>第145段 内容 21025</p><p>第146段 内容 21316</p><p>第147段 内容 21609</p><p>第148段 内容 21904</p><p>第149段 内容 22201</p><p>第150段 内容 22500</p><p>第151段 内容 22801</p><p>第152段 内容 23104</p><p>第153段 内容 23409</p><p>第154段 内容 23716</p><p>第155段 内容 24025</p><p>第156段 内容 24336</p><p>第157段 内容 24649</p><p>第158段 内容 24964</p><p>第159段 内容 25281</p><p>第160段 内容 25600</p><p>第161段 内容 25921</p><p>第162段 内容 26244</p><p>第163段 内容 26569</p><p>第164段 内容 26896</p><p>第165段 内容 27225</p><p>第166段 内容 27556</p><p>第167段 内容 27889</p><p>第168段 内容 28224</p><p>第169段 内容 28561</p><p>第170段 内容 28900</p><p>第171段 内容 29241</p><p>第172段 内容 29584</p><p>第173段 内容 29929</p><p>第174段 内容 30276</p><p>第175段 内容 30625</p><p>第176段 内容 30976</p><p>第177段 内容 31329</p><p>第178段 内容 31684</p><p>第179段 内容 32041</p><p>第180段 内容 32400</p><p>第181段 内容 32761</p><p>第182段 内容 33124</p><p>第183段 内容 33489</p><p>第184段 内容 33856</p><p>第185段 内容 34225</p><p>第186段 内容 34596</p><p>第187段 内容 34969</p><p>第188段 内容 35344</p><p>第189段 内容 35721</p><p>第190段 内容 36100</p><p>第191段 内容 36481</p><p>第192段 内容 36864</p><p>第193段 内容 37249</p><p>第194段 内容 37636</p><p>第195段 内容 38025</p><p>第196段 内容 38416</p><p>第197段 内容 38809</p><p>第198段 内容 39204</p><p>第199段 内容 39601</p>"
+ },
+ "swap_positions": [
+  {
+   "encoded": "zbV8PS",
+   "want": [
+    0,
+    2
+   ]
+  },
+  {
+   "encoded": "RD0hpZRZbN-lv9tmhR2m-fGapZnc",
+   "want": [
+    5,
+    12,
+    2,
+    9,
+    6,
+    20,
+    4,
+    21,
+    21,
+    19
+   ]
+  },
+  {
+   "encoded": "q44atnTnLyxgk",
+   "want": [
+    5,
+    1,
+    1,
+    8,
+    8,
+    0,
+    0,
+    5,
+    5,
+    1
+   ]
+  },
+  {
+   "encoded": "CjhBrjNJKYj50-O7jeAnsc7SPN",
+   "want": [
+    20,
+    18,
+    17,
+    4,
+    1,
+    14,
+    10,
+    3,
+    1,
+    14
+   ]
+  },
+  {
+   "encoded": "uor02zzeVKm2FAOkbRShFsoqiMYWAH5pbFmvqi0FLYp7e8BZGvJr7Vs8Gz-",
+   "want": [
+    11,
+    10,
+    5,
+    2,
+    1,
+    44,
+    44,
+    44,
+    41,
+    11
+   ]
+  },
+  {
+   "encoded": "33dMK6yHC9hWi0zz770jB08DL4CGGa",
+   "want": [
+    1,
+    12,
+    21,
+    14,
+    16,
+    11,
+    17,
+    24,
+    16,
+    11
+   ]
+  },
+  {
+   "encoded": "q5h",
+   "want": []
+  },
+  {
+   "encoded": "zpjCPbnk_qY8T0fHLdbWDIqHbrLS3hIhct",
+   "want": [
+    25,
+    11,
+    8,
+    25,
+    23,
+    12,
+    25,
+    27,
+    23,
+    18
+   ]
+  },
+  {
+   "encoded": "wGYYfUXezzbA3QhuSbg_rUxC-1mbAGJ3KJvp0b0ov",
+   "want": [
+    18,
+    4,
+    26,
+    30,
+    17,
+    20,
+    5,
+    16,
+    12,
+    28
+   ]
+  },
+  {
+   "encoded": "OlWKACUlTUAk5",
+   "want": [
+    1,
+    2,
+    2,
+    0,
+    0,
+    7,
+    7,
+    5,
+    5,
+    1
+   ]
+  }
+ ]
+}

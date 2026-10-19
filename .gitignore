@@ -1,0 +1,13 @@
+# 凭证与登录临时文件（含 cookie/apikey，绝不入库）
+creds.json
+otp.txt
+weread-qr*.png
+/weread-login.exe
+
+# 构建产物（二进制经 GitHub Release 分发）
+out/
+
+# 编辑器/系统杂项
+.vscode/
+.idea/
+Thumbs.db
