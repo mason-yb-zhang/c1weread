@@ -7,8 +7,11 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"os/signal"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
+	"syscall"
 	"time"
 
 	"c1device"
@@ -45,9 +48,40 @@ type app struct {
 	progress          map[string]bookProgress
 }
 
+// writeTrace 向数据目录的 c1weread.trace 追加一行（崩溃/信号诊断用，与启动器日志无关）。
+func writeTrace(format string, args ...any) {
+	f, err := os.OpenFile(filepath.Join(dataDir(), "c1weread.trace"),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	fmt.Fprintf(f, format+"\n", args...)
+	f.Sync()
+}
+
 func main() {
 	debug.SetMemoryLimit(12 << 20)
 	debug.SetGCPercent(50)
+
+	// 崩溃/信号留痕见 writeTrace：无论什么启动方式都写数据目录里的 trace 文件，事后可查。
+	// 顶层 recover：panic 不再无声闪退，留堆栈后退出。
+	defer func() {
+		if r := recover(); r != nil {
+			writeTrace("panic: %v\n%s", r, debug.Stack())
+			panic(r)
+		}
+	}()
+	// SIGHUP 防护：C1ancher 系的子进程管理用 PDEATHSIG=SIGHUP，
+	// Go 默认收到 HUP 即退出（表现为"运行一会就闪退"），这里直接忽略。
+	signal.Ignore(syscall.SIGHUP)
+	sigCh := make(chan os.Signal, 4)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigCh
+		writeTrace("signal %v pid=%d at %s", sig, os.Getpid(), time.Now().Format(time.RFC3339))
+		os.Exit(0)
+	}()
 
 	face, err := c1device.NewBitmapFace(fontData, 16)
 	if err != nil {
@@ -263,6 +297,13 @@ func (a *app) missingChapters() int {
 // 结果经 a.dlDone 汇报：nil=完成或用户取消（看 a.downloadCancelled），非 nil=失败原因。
 // 不在本函数里直接改视图，视图切换由主循环的 dlDone 分支统一处理。
 func (a *app) downloadBook(m *manifest) {
+	// panic 防护：下载在后台 goroutine 跑，崩了要留痕并回报失败而不是闪退。
+	defer func() {
+		if r := recover(); r != nil {
+			writeTrace("download panic: %v\n%s", r, debug.Stack())
+			a.dlDone <- fmt.Errorf("下载内部错误: %v", r)
+		}
+	}()
 	// 拉章节表
 	if len(m.Chapters) == 0 {
 		infos, err := a.fetchInfosWithRetry(m.BookID)
@@ -392,6 +433,7 @@ func (a *app) openChapter(idx, page int) {
 		a.readerPages = 1
 	}
 	a.readerPage = clamp(page, 0, a.readerPages-1)
+	a.catSel = idx // 阅读跨章后目录选中项跟着走，进度和返回才一致
 	a.view = viewReader
 }
 
