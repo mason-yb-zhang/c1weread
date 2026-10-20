@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-"""build.bat 辅助：ELF r1->r2 补丁 + sha256 + 生成 local-apps manifest。
+"""build.bat 辅助：整理 mipsle 产物名 + sha256 + 生成 local-apps manifest。
 
 用法: py -3 scripts/build_aux.py <elf> <manifest-out>
+
+不修改 ELF e_flags。GOARCH=mipsle 产物天然是 MIPS32r1 标记，与 XBurst r2
+CPU 向下兼容；设备约定（c1slim-toolkit docs/device-quirks.md）明确要求保留
+编译器生成的 ELF 标记，禁止改头伪装 ISA。
 """
 import hashlib
 import json
-import struct
+import shutil
 import sys
 
 APP_ID = "weread"
@@ -13,22 +17,20 @@ APP_NAME = "微信读书"
 EXECUTABLE = "/storage/c1/local-apps/apps/weread/bin/c1weread"
 
 
-def patch_elf_r2(path: str) -> bytes:
-    """读 ELF，把 e_flags 的 ISA 域（高 nibble，偏移 36）从 r1(0x5) 改 r2(0x7)。"""
-    data = bytearray(open(path, "rb").read())
-    flags = struct.unpack("<I", data[36:40])[0]
-    if flags & 0xF0000000 != 0x50000000:
-        raise SystemExit("unexpected e_flags ISA nibble: 0x%x" % (flags >> 28))
-    data[36:40] = struct.pack("<I", (flags & ~0xF0000000) | 0x70000000)
-    return bytes(data)
-
-
 def main() -> int:
     elf_in, manifest_out = sys.argv[1:3]
-    patched = patch_elf_r2(elf_in)
-    elf_out = elf_in[:-4] if elf_in.endswith(".exe") else elf_in + ".patched"
-    open(elf_out, "wb").write(patched)
-    digest = hashlib.sha256(patched).hexdigest()
+    data = open(elf_in, "rb").read()
+    if data[:4] != b"\x7fELF":
+        raise SystemExit("not an ELF: %s" % elf_in)
+    # e_ident[EI_DATA]=1 小端；e_machine=8 MIPS；e_ident[EI_CLASS]=1 o32
+    if data[5] != 1 or data[4] != 1:
+        raise SystemExit("want ELF32 little-endian, got class=%d data=%d" % (data[4], data[5]))
+    if int.from_bytes(data[18:20], "little") != 8:
+        raise SystemExit("want e_machine EM_MIPS(8)")
+
+    elf_out = elf_in[:-4] if elf_in.endswith(".exe") else elf_in + ".final"
+    shutil.copyfile(elf_in, elf_out)
+    digest = hashlib.sha256(data).hexdigest()
     manifest = {
         "id": APP_ID,
         "name": APP_NAME,
@@ -37,7 +39,8 @@ def main() -> int:
     }
     with open(manifest_out, "w", encoding="utf-8") as fh:
         fh.write(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
-    print("patched %s -> %s" % (elf_in, elf_out))
+    print("final %s -> %s" % (elf_in, elf_out))
+    print("e_flags = 0x%08x (kept as-is)" % int.from_bytes(data[36:40], "little"))
     print("sha256 = %s" % digest)
     print("manifest -> %s" % manifest_out)
     return 0

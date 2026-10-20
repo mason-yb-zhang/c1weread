@@ -1,5 +1,6 @@
 @echo off
-rem c1weread build: mipsle cross compile + ELF r1->r2 patch + manifest + Windows binaries.
+rem c1weread build: mipsle cross compile + manifest + Windows binaries.
+rem 不改 ELF 头（见 scripts/build_aux.py 与 c1slim-toolkit docs/device-quirks.md）。
 setlocal
 
 rem Go toolchain (skip if already on PATH)
@@ -19,7 +20,7 @@ set "GOOS=linux" & set "GOARCH=mipsle" & set "GOMIPS=hardfloat" & set "CGO_ENABL
 go build -trimpath -ldflags "-s -w -buildid=" -o out\c1weread.exe .\cmd\c1weread || goto :fail
 set "GOOS=" & set "GOARCH=" & set "GOMIPS=" & set "CGO_ENABLED="
 
-echo [2/4] ELF r1-r2 patch + manifest...
+echo [2/4] finalize binary + manifest...
 py -3 scripts\build_aux.py out\c1weread.exe out\20-weread.json || goto :fail
 
 echo [3/4] Windows binaries (preview + login tool)...

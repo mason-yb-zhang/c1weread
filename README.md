@@ -10,8 +10,8 @@
 | `weread/` | 纯协议包（无 UI，可在 Windows 上 `go test`）：`_e` 哈希、签名、分片解码、XHTML→文本、客户端、续期、扫码登录、官方 gateway |
 | `cmd/c1weread` | 设备应用（同一源码在 Windows 用 host stub 编译可预览） |
 | `cmd/weread-login` | PC 扫码登录工具（仅此工具依赖 qrterminal） |
-| `build.bat` | mipsle 交叉编译 + ELF r1→r2 头补丁 + manifest + Windows 版 |
-| `deploy.bat` | adb 推送二进制 / manifest / 凭证 |
+| `build.bat` | mipsle 交叉编译 + manifest + Windows 版（不改 ELF 头） |
+| `deploy.bat` | adb 推送二进制 / manifest / 凭证（local-apps 本地安装） |
 
 ## 一、设备 admit（一次性）
 
@@ -45,7 +45,7 @@ out\weread-login-win.exe -out creds.json
 ## 三、构建与部署
 
 ```bat
-build.bat    rem 产出 out\c1weread（mipsle r2 补丁后）、out\20-weread.json、out\c1weread-win.exe、out\weread-login-win.exe
+build.bat    rem 产出 out\c1weread、out\20-weread.json、out\c1weread-win.exe、out\weread-login-win.exe
 deploy.bat   rem adb push 到设备；本机有 creds.json 时一并推送
 ```
 
@@ -56,6 +56,34 @@ deploy.bat   rem adb push 到设备；本机有 creds.json 时一并推送
 ```bat
 adb push creds.json /storage/c1/local-apps/apps/weread/data/creds.json
 ```
+
+## 三·B、上架应用商店（必读）
+
+商店安装路径与 local-apps **不是同一套启动链路**。`c1pkg` 按应用 ID 决定启动模式：
+
+| 模式 | 来源 | 行为 |
+|---|---|---|
+| `direct` | `c1pkg_app_uses_direct_io(id)` 白名单，或包内 `.c1pkg-mode` | 启动器持有硬件租约后 exec，C1ancher **让出屏幕与输入** |
+| `terminal` | 其余应用的默认值 | **不**拿独占租约；C1ancher 继续画终端页，并经 `terminal.c` 的 `PR_SET_PDEATHSIG, SIGHUP` 拉起 |
+
+`weread` 不在核心白名单（`book-reader` / `pic` / `music-player` 等在）。不指定 mode 时商店会以 **terminal** 启动：
+Go 默认收到 SIGHUP 即退 → 表现为「运行一会就闪退」；UI 还在刷屏，观感也像崩溃。
+local-apps 启动器自己持租约、走薄 exec，没有这条 SIGHUP 路径，所以本地正常。
+
+**发布时必须显式指定 `-mode direct`**（与 book-reader 相同），让安装目录写入 `.c1pkg-mode`：
+
+```bat
+c1publish.exe -token-file .\my-author.token -allow-insecure-http ^
+  -id weread -version 0.1.x -name "微信读书" ^
+  -entry bin/c1weread -payload .\payload -mode direct
+```
+
+payload 布局：`payload/bin/c1weread`（`out\c1weread` 拷入）+ 可选 `payload/assets/`。
+同版本内容不可变：改了程序必须升版本号再发。不要把 `creds.json` 打进包。
+
+程序侧已 `signal.Ignore(SIGHUP)`，但那只是兜底；**商店包必须是带该修复的二进制，且 mode 为 direct**。
+
+崩溃留痕：`/storage/c1/local-apps/apps/weread/data/c1weread.trace`（panic / TERM / INT）。
 
 ## 四、设备上操作
 
