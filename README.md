@@ -12,6 +12,7 @@
 | `cmd/weread-login` | PC 扫码登录工具（仅此工具依赖 qrterminal） |
 | `build.bat` | mipsle 交叉编译 + manifest + Windows 版（不改 ELF 头） |
 | `deploy.bat` | adb 推送二进制 / manifest / 凭证（local-apps 本地安装） |
+| `PUBLISHED.md` | 商店版本、令牌归属、设备侧修复状态 |
 
 ## 一、设备 admit（一次性）
 
@@ -87,11 +88,13 @@ payload 布局：`payload/bin/c1weread`（`out\c1weread` 拷入）+ 可选 `payl
 |---|---|---|
 | 应用 ID | `weread` | 首次发布后归作者独占，更新必须同 ID |
 | 显示名 | `微信读书` | |
-| Publisher 作者名 | `masonzhang` | `c1publish -author` / 令牌绑定名。**不是** Git 提交名 `mason-yb-zhang`，也不是参考应用的 `fwz233` |
+| Publisher 作者名 | `masonzhang` | 商店索引作者。**不是** Git 提交名 `mason-yb-zhang`，也不是参考应用的 `fwz233` |
 | 令牌文件 | `masonzhang.token`（本地私密目录） | **绝不入库、不进 payload、不发聊天**。丢失无法找回 |
 | 启动模式 | `direct` | 必选，否则 terminal 模式闪退（见上） |
 
-已发布记录请另建 `PUBLISHED.md` 追加（版本号、包 SHA256、目录序列、核验结果），不要改历史冻结包。
+**令牌 ≠ 目录名**：`~/.config/c1-reader-lab/publisher.token` 绑定的是 `mason-yb-zhang`，只能发新 ID，**不能**更新 `weread`（HTTP 403）。更新须用 `masonzhang` 令牌。
+
+发布记录与设备侧修复状态见 [PUBLISHED.md](PUBLISHED.md)。
 
 程序侧已 `signal.Ignore(SIGHUP)`，但那只是兜底；**商店包必须是带该修复的二进制，且 mode 为 direct**。
 
