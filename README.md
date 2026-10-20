@@ -73,13 +73,25 @@ local-apps 启动器自己持租约、走薄 exec，没有这条 SIGHUP 路径�
 **发布时必须显式指定 `-mode direct`**（与 book-reader 相同），让安装目录写入 `.c1pkg-mode`：
 
 ```bat
-c1publish.exe -token-file .\my-author.token -allow-insecure-http ^
+c1publish.exe -token-file .\masonzhang.token -allow-insecure-http ^
   -id weread -version 0.1.x -name "微信读书" ^
   -entry bin/c1weread -payload .\payload -mode direct
 ```
 
 payload 布局：`payload/bin/c1weread`（`out\c1weread` 拷入）+ 可选 `payload/assets/`。
 同版本内容不可变：改了程序必须升版本号再发。不要把 `creds.json` 打进包。
+
+### 商店 Publisher 身份（与 Git 作者不是一回事）
+
+| 项 | 值 | 说明 |
+|---|---|---|
+| 应用 ID | `weread` | 首次发布后归作者独占，更新必须同 ID |
+| 显示名 | `微信读书` | |
+| Publisher 作者名 | `masonzhang` | `c1publish -author` / 令牌绑定名。**不是** Git 提交名 `mason-yb-zhang`，也不是参考应用的 `fwz233` |
+| 令牌文件 | `masonzhang.token`（本地私密目录） | **绝不入库、不进 payload、不发聊天**。丢失无法找回 |
+| 启动模式 | `direct` | 必选，否则 terminal 模式闪退（见上） |
+
+已发布记录请另建 `PUBLISHED.md` 追加（版本号、包 SHA256、目录序列、核验结果），不要改历史冻结包。
 
 程序侧已 `signal.Ignore(SIGHUP)`，但那只是兜底；**商店包必须是带该修复的二进制，且 mode 为 direct**。
 
