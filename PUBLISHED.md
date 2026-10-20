@@ -87,3 +87,13 @@ c1publish.exe -token-file D:\dev\c1-slim\tokens\masonzhang.token -allow-insecure
 ```
 
 教训：`-mode direct` 必须在**每次发布**时显式带上（服务端不记忆模式）；二进制保持 r1 原头，禁止改 e_flags。
+
+## 2026-10-21：0.1.3 上架（本机 masonzhang 令牌）
+
+| 项 | 值 |
+|---|---|
+| 版本 | **0.1.3** |
+| 内容 | 9b0cb4a + 9ff41a5：reader-lab 字体栈/阅读设置移植 + 界面骨架/音量键翻页/MiSans/新晰黑正文字体 |
+| 二进制 SHA256 | `31324800742292e9aa88dbd53d90831a19693a64de5d6116b1537ea502e1bd18`（payload/bin/c1weread） |
+| 模式 | `-mode direct`（显式携带） |
+| 服务端 | 已确认（next=0.1.4） |
