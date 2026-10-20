@@ -68,3 +68,22 @@ c1publish.exe -token-file <masonzhang-token> -allow-insecure-http ^
 | 服务端包 | 1,816,979 字节 |
 
 与 `weread` 是不同应用、不同作者身份。
+
+## 2026-10-20 晚：0.1.2 与 -mode direct 补发（本机 masonzhang 令牌）
+
+阻塞清除，三个应用全部改为 `-mode direct` 重新上架：
+
+| 应用 | 新版本 | 二进制 | 说明 |
+|---|---|---|---|
+| weread | **0.1.2** | SHA `87974274…`（设备就地修复版，原样拉回） | `-mode direct`，服务端已确认（next=0.1.3） |
+| radio | **0.1.1** | 本机重建 r1 未改头（`radio-store`） | `-mode direct`（next=0.1.2） |
+| reader-lab | **0.1.1** | 设备原版 r1 二进制（换回未改头版） | `-mode direct`（next=0.1.2） |
+
+发布命令模板（weread 用 payload，radio 用单文件）：
+
+```bat
+c1publish.exe -token-file D:\dev\c1-slim\tokens\masonzhang.token -allow-insecure-http ^
+  -id weread -version <v> -name "微信读书" -entry bin/c1weread -payload .\payload -mode direct
+```
+
+教训：`-mode direct` 必须在**每次发布**时显式带上（服务端不记忆模式）；二进制保持 r1 原头，禁止改 e_flags。
