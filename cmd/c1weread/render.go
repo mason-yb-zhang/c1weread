@@ -29,6 +29,7 @@ const (
 	viewDownload
 	viewCatalog
 	viewReader
+	viewSettings
 	viewError
 )
 
@@ -60,6 +61,8 @@ func (a *app) render() c1device.Frame {
 		a.renderCatalog(c)
 	case viewReader:
 		a.renderReader(c)
+	case viewSettings:
+		a.renderSettings(c)
 	case viewError:
 		c.DrawText(a.face, 2, titleY, "出错")
 		drawPlainLines(c, a.face, wrapStatusLines(a.errMsg))
@@ -180,18 +183,54 @@ func (a *app) renderCatalog(c *c1device.Canvas) {
 func (a *app) renderReader(c *c1device.Canvas) {
 	title := truncateToWidth(a.face, a.readerTitle, c1device.DisplayWidth-40)
 	c.DrawText(a.face, 2, titleY, title)
+	pageCount := max(1, len(a.pages))
 	c.DrawTextRight(a.face, c1device.DisplayWidth-2, titleY,
-		fmt.Sprintf("%d/%d", a.readerPage+1, max(1, a.readerPages)))
-	for i := 0; i < readerRows; i++ {
-		idx := a.readerPage*readerRows + i
-		if idx >= len(a.readerLines) {
-			break
+		fmt.Sprintf("%d/%d", a.readerPage+1, pageCount))
+	if len(a.pages) == 0 {
+		return
+	}
+	page := a.pages[a.readerPage]
+	lineHeight := a.bodyFace.LineHeight()
+	if lineHeight < 1 {
+		lineHeight = rowH
+	}
+	for i, line := range page.Lines {
+		top := readerBodyTop + i*lineHeight
+		if isTTF(a.settings.Font) {
+			c.DrawTextThreshold(a.bodyFace, 4, top, line, uint8(a.settings.Threshold))
+		} else {
+			c.DrawText(a.bodyFace, 4, top, line)
 		}
-		c.DrawText(a.face, 2, contentY+i*rowH, a.readerLines[idx])
 	}
-	if a.readerPages > 1 {
-		c.DrawScrollIndicator(c1device.DisplayWidth-3, contentY, contentY+readerRows*rowH, a.readerPage, a.readerPages)
+	if pageCount > 1 {
+		c.DrawScrollIndicator(c1device.DisplayWidth-3, readerBodyTop, readerBodyTop+len(page.Lines)*lineHeight, a.readerPage, pageCount)
 	}
+}
+
+// renderSettings 阅读设置视图。
+func (a *app) renderSettings(c *c1device.Canvas) {
+	c.DrawText(a.face, 2, titleY, "阅读设置")
+	fontLabel := "字体  " + fontDisplayName(a.settings)
+	sizeLabel := fmt.Sprintf("字号  %d px", a.settings.Size)
+	thresholdLabel := fmt.Sprintf("阈值  %d", a.settings.Threshold)
+	if !isTTF(a.settings.Font) {
+		thresholdLabel += " (点阵无影响)"
+	}
+	items := []string{fontLabel, sizeLabel, thresholdLabel}
+	hint := "↑↓选择 ←→调整 S/Back 返回"
+	if a.message != "" {
+		hint = a.message
+	}
+	for i, item := range items {
+		top := contentY + i*rowH
+		if i == a.settingsSel {
+			rect := image.Rect(0, top, c1device.DisplayWidth, top+rowH)
+			c.DrawInvertedTextBar(a.face, rect, truncateToWidth(a.face, "› "+item, c1device.DisplayWidth-4))
+		} else {
+			c.DrawText(a.face, 2, top, truncateToWidth(a.face, "  "+item, c1device.DisplayWidth-4))
+		}
+	}
+	c.DrawText(a.face, 2, statusY, truncateToWidth(a.face, hint, c1device.DisplayWidth-4))
 }
 
 // truncateToWidth 按像素宽截断文本（超宽加 …）。

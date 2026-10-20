@@ -47,10 +47,13 @@ out\weread-login-win.exe -out creds.json
 
 ```bat
 build.bat    rem 产出 out\c1weread、out\20-weread.json、out\c1weread-win.exe、out\weread-login-win.exe
-deploy.bat   rem adb push 到设备；本机有 creds.json 时一并推送
+             rem 并整理 payload: payload\bin\c1weread + payload\assets\fonts\（运行时字体）
+deploy.bat   rem adb push payload 到设备；本机有 creds.json 时一并推送
 ```
 
-`deploy.bat` 推送完成后，在设备的 local-apps 列表**按 R 刷新**，启动「微信读书」。
+`deploy.bat` 推送 `payload/bin/c1weread` 与 `payload/assets/fonts/` 完成后，在设备的 local-apps 列表**按 R 刷新**，启动「微信读书」。
+
+运行时字体目录：`/storage/c1/local-apps/apps/weread/assets/fonts/`。若缺失 Fusion12 / 霞鹜文楷，程序自动回退到内嵌 Unifont。
 
 也可手动 push 凭证：
 
@@ -104,9 +107,11 @@ payload 布局：`payload/bin/c1weread`（`out\c1weread` 拷入）+ 可选 `payl
 
 | 按键 | 作用 |
 |---|---|
-| ↑ / ↓ | 选择（书架/目录）；阅读时翻页（跨章自动衔接） |
+| ↑ / ↓ | 选择（书架/目录/设置）；阅读时翻页（跨章自动衔接） |
+| ← / → | 调整设置项数值 |
 | OK | 打开书 / 进入章节；同步失败时重试 |
-| ← / Back | 返回目录 / 书架；错误屏返回书架 |
+| ← / Back | 返回目录 / 书架；设置屏返回阅读器；错误屏返回书架 |
+| S | 阅读器中进入/退出字体设置 |
 
 首次打开一本书会自动下载全部章节（每章间隔 200ms，屏上显示进度），
 之后离线可读。下载中按 Back 取消。
@@ -119,10 +124,32 @@ payload 布局：`payload/bin/c1weread`（`out\c1weread` 拷入）+ 可选 `payl
 - `books/<bookId>/manifest.json` — 书名 + 章节表
 - `books/<bookId>/<chapterIdx>_<chapterUid>.txt` — 章节纯文本
 - `progress.json` — 每本书 `{chapterIdx, page}` 阅读进度
+- `reader-settings.json` — 阅读字体/字号/阈值设置
 
 环境变量 `C1WEREAD_DATA` 可覆盖数据目录（PC 预览测试用）。
+环境变量 `C1WEREAD_FONTS` 可覆盖运行时字体目录（默认从 `/proc/self/exe` 相邻的 `../assets/fonts` 或 `./assets/fonts` 查找）。
 
-## 六、PC 预览 / 开发
+## 六、字体与许可
+
+阅读正文支持三种字体：
+
+| 字体 | 来源 | 加载方式 | 字号支持 |
+|---|---|---|---|
+| Unifont 16 | GNU Unifont 子集 | `go:embed` 内嵌 | 12/14/16/18/20/24 px（缩放） |
+| Fusion Pixel 12px | https://github.com/TakWolf/fusion-pixel-font | `payload/assets/fonts/fusion12.bin` | 原生 12 px |
+| 霞鹜文楷 LXGW WenKai | https://github.com/lxgw/LxgwWenKai | `payload/assets/fonts/LXGWWenKaiLite-Regular.ttf` | 12/14/16/18/20/24 px |
+
+- 字号档位：12 / 14 / 16 / 18 / 20 / 24 px；行高随字体真实 metrics。
+- 黑白阈值 32–224（默认 128）仅影响 TTF（霞鹜文楷）栅格化；点阵字体不受阈值影响。
+- Fusion 原生点阵固定 12 px，选择该字体时字号锁定为 12。
+- 运行时字体缺失时自动回退到内嵌 Unifont，并提示。
+
+许可证：
+
+- 代码：`LICENSE`（GPL-3.0）；字体渲染栈与分页逻辑移植自 `reader-lab`（同许可）。
+- 字体许可详见 `THIRD_PARTY_NOTICES.md` 与 `payload/assets/fonts/` 下的 `OFL*.txt`/`pkg-font-LICENSE.txt`。
+
+## 七、PC 预览 / 开发
 
 ```bat
 set GOPATH=D:\dev\c1-slim\workspace\gopath
@@ -142,7 +169,7 @@ go test ./cmd/c1weread -run TestPreview          rem 生成 out\preview-*.frame�
 py -3 D:\dev\c1-slim\workspace\c1slim-toolkit\tools\frame2png.py out\preview-shelf.frame out\preview-shelf.png
 ```
 
-## 七、协议说明（给维护者）
+## 八、协议说明（给维护者）
 
 算法严格对照 `finlater/weread.koplugin` 参考实现（`scripts/fetch_weread_epub.py`），
 单测向量由该 Python 实现批量生成对拍（`weread/testdata/vectors.json`）：
@@ -157,7 +184,7 @@ py -3 D:\dev\c1-slim\workspace\c1slim-toolkit\tools\frame2png.py out\preview-she
 - 书架/搜索/进度 — 官方 gateway `i.weread.qq.com/api/agent/gateway`，
   `Authorization: Bearer <apikey>`，`skill_version=1.0.5`。
 
-## 已知限制
+## 九、已知限制
 
 - 纯文本，无图片、无排版样式（表格/代码块退化为纯文本行）。
 - 有声书（albums）只标注「不支持」，无音频能力。

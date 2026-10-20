@@ -22,13 +22,16 @@ import (
 var fontData []byte
 
 type app struct {
-	face   *c1device.Face
-	client *weread.Client
-	creds  *weread.Credentials
+	face    *c1device.Face // UI 字体（内嵌 Unifont 16px）
+	bodyFace *c1device.Face // 正文字体
+	fontData *mappedFont    // TTF 运行时字体数据（Face 借用其 typeface）
+	client  *weread.Client
+	creds   *weread.Credentials
 
-	view   viewMode
-	status string // 书架状态行
-	errMsg string
+	view        viewMode
+	status      string // 书架状态行
+	errMsg      string
+	message     string // 阅读器/设置等临时提示
 
 	shelf             []weread.ShelfBook
 	shelfSel          int
@@ -41,10 +44,11 @@ type app struct {
 	downloadDone      int
 	downloadCancelled bool
 	dlDone            chan error // 后台下载完成信号（nil=完成/取消；非 nil=失败原因）
-	readerLines       []string // 当前章全部折行
-	readerPages       int
+	pages             []Page     // 当前章分页结果
 	readerPage        int
 	readerTitle       string
+	settings          ReaderSettings
+	settingsSel       int
 	progress          map[string]bookProgress
 }
 
@@ -85,7 +89,7 @@ func main() {
 
 	face, err := c1device.NewBitmapFace(fontData, 16)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "c1weread: font:", err)
+		fmt.Fprintln(os.Stderr, "c1weread: ui font:", err)
 		os.Exit(1)
 	}
 	defer face.Close()
@@ -93,6 +97,24 @@ func main() {
 	if err := ensureDataDir(); err != nil {
 		fmt.Fprintln(os.Stderr, "c1weread: data dir:", err)
 		os.Exit(1)
+	}
+
+	settings, settingsErr := loadReaderSettings()
+	bodyFace, fontData, err := newReaderFace(settings)
+	if err != nil {
+		if settingsErr == nil {
+			fmt.Fprintf(os.Stderr, "c1weread: body font (%s): %v; fallback unifont\n", settings.Font, err)
+		}
+		settings = defaultReaderSettings()
+		bodyFace, fontData, err = newReaderFace(settings)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "c1weread: fallback font:", err)
+			os.Exit(1)
+		}
+	}
+	defer bodyFace.Close()
+	if fontData != nil {
+		defer fontData.Close()
 	}
 
 	creds, err := loadCreds()
@@ -105,7 +127,7 @@ func main() {
 		progress = make(map[string]bookProgress)
 	}
 
-	a := &app{face: face, creds: creds, progress: progress}
+	a := &app{face: face, bodyFace: bodyFace, fontData: fontData, settings: settings, creds: creds, progress: progress}
 	if creds == nil || creds.Cookies["wr_vid"] == "" {
 		a.view = viewGuide
 	} else {
@@ -216,6 +238,8 @@ func (a *app) handleEvent(ev c1device.Event, cancel context.CancelFunc) bool {
 		return a.handleCatalog(ev)
 	case viewReader:
 		return a.handleReader(ev)
+	case viewSettings:
+		return a.handleSettings(ev)
 	case viewError:
 		if ev.Key == c1device.KeyLeft || ev.Key == c1device.KeyBack || ev.Key == c1device.KeyOK {
 			a.view = viewShelf
@@ -427,12 +451,16 @@ func (a *app) openChapter(idx, page int) {
 		text = fetched
 	}
 	a.readerTitle = a.currentBook.Title + "·" + ch.Title
-	a.readerLines = wrapText(text, textWidthPx)
-	a.readerPages = (len(a.readerLines) + readerRows - 1) / readerRows
-	if a.readerPages == 0 {
-		a.readerPages = 1
+	pages, err := paginate(text, a.bodyFace)
+	if err != nil {
+		a.fail(fmt.Sprintf("分页失败: %v", err))
+		return
 	}
-	a.readerPage = clamp(page, 0, a.readerPages-1)
+	if len(pages) == 0 {
+		pages = []Page{{Start: 0, End: len(text)}}
+	}
+	a.pages = pages
+	a.readerPage = clamp(page, 0, len(a.pages)-1)
 	a.catSel = idx // 阅读跨章后目录选中项跟着走，进度和返回才一致
 	a.view = viewReader
 }
@@ -455,7 +483,7 @@ func (a *app) handleReader(ev c1device.Event) bool {
 			a.openChapter(a.catSel-1, lastPage(a, a.catSel-1))
 		}
 	case c1device.KeyDown:
-		if a.readerPage < a.readerPages-1 {
+		if a.readerPage < len(a.pages)-1 {
 			a.readerPage++
 			save(chapterIdx)
 		} else if a.catSel < len(a.chapters)-1 {
@@ -464,6 +492,11 @@ func (a *app) handleReader(ev c1device.Event) bool {
 	case c1device.KeyLeft, c1device.KeyBack:
 		save(chapterIdx)
 		a.view = viewCatalog
+	case c1device.KeyRune:
+		if ev.Rune == 's' || ev.Rune == 'S' {
+			a.view = viewSettings
+			a.settingsSel = 0
+		}
 	}
 	return false
 }
@@ -475,12 +508,181 @@ func lastPage(a *app, idx int) int {
 	if err != nil {
 		return 0
 	}
-	lines := wrapText(text, textWidthPx)
-	pages := (len(lines) + readerRows - 1) / readerRows
-	if pages <= 0 {
+	pages, err := paginate(text, a.bodyFace)
+	if err != nil || len(pages) == 0 {
 		return 0
 	}
-	return pages - 1
+	return len(pages) - 1
+}
+
+// handleSettings 设置视图按键。
+func (a *app) handleSettings(ev c1device.Event) bool {
+	switch ev.Key {
+	case c1device.KeyBack, c1device.KeyRune:
+		if ev.Key == c1device.KeyBack || ev.Rune == 's' || ev.Rune == 'S' {
+			a.view = viewReader
+		}
+	case c1device.KeyUp:
+		if a.settingsSel > 0 {
+			a.settingsSel--
+		}
+	case c1device.KeyDown:
+		if a.settingsSel < 2 {
+			a.settingsSel++
+		}
+	case c1device.KeyLeft, c1device.KeyRight:
+		delta := 1
+		if ev.Key == c1device.KeyLeft {
+			delta = -1
+		}
+		settings := a.settings
+		switch a.settingsSel {
+		case 0:
+			fonts := []string{fontUnifont, fontFusion12, fontLXGW}
+			pick := 0
+			for i, f := range fonts {
+				if f == settings.Font {
+					pick = i
+					break
+				}
+			}
+			pick += delta
+			if pick < 0 {
+				pick = len(fonts) - 1
+			}
+			if pick >= len(fonts) {
+				pick = 0
+			}
+			settings.Font = fonts[pick]
+			if settings.Font == fontFusion12 {
+				settings.Size = 12
+			}
+		case 1:
+			if settings.Font == fontFusion12 {
+				a.message = "Fusion 原生点阵固定 12px"
+				return false
+			}
+			for i, size := range readerFontSizes {
+				if size == settings.Size {
+					next := i + delta
+					if next < 0 {
+						next = len(readerFontSizes) - 1
+					}
+					if next >= len(readerFontSizes) {
+						next = 0
+					}
+					settings.Size = readerFontSizes[next]
+					break
+				}
+			}
+		case 2:
+			settings.Threshold += delta * 16
+			if settings.Threshold < 32 {
+				settings.Threshold = 32
+			}
+			if settings.Threshold > 224 {
+				settings.Threshold = 224
+			}
+		}
+		if settings != a.settings {
+			if err := a.applyReaderSettings(settings, true); err != nil {
+				a.message = sanitizeMessage(err.Error())
+			}
+		}
+	}
+	return false
+}
+
+// applyReaderSettings 应用新设置：按需创建 Face，重分页并尽量保持当前页首位置，持久化。
+func (a *app) applyReaderSettings(settings ReaderSettings, persist bool) error {
+	if err := settings.validate(); err != nil {
+		return err
+	}
+	needFace := settings.Font != a.settings.Font || settings.Size != a.settings.Size || a.bodyFace == nil
+	var (
+		face *c1device.Face
+		data *mappedFont
+		err  error
+	)
+	if needFace {
+		face, data, err = newReaderFace(settings)
+		if err != nil {
+			// 运行时字体缺失时回退到内嵌 Unifont
+			if settings.Font != fontUnifont {
+				a.message = sanitizeMessage(err.Error()) + "，已回退 Unifont"
+				settings = ReaderSettings{Font: fontUnifont, Size: 16, Threshold: settings.Threshold}
+				face, data, err = newReaderFace(settings)
+			}
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		face, data = a.bodyFace, a.fontData
+	}
+
+	oldFace, oldData, oldSettings := a.bodyFace, a.fontData, a.settings
+	a.bodyFace, a.fontData, a.settings = face, data, settings
+
+	if a.view == viewReader && a.currentBook != nil && a.catSel >= 0 && a.catSel < len(a.chapters) {
+		var offset int
+		if a.readerPage >= 0 && a.readerPage < len(a.pages) {
+			offset = a.pages[a.readerPage].Start
+		}
+		ch := a.chapters[a.catSel]
+		text, err := chapterText(a.currentBook, ch)
+		if err != nil {
+			// 保持旧状态
+			a.bodyFace, a.fontData, a.settings = oldFace, oldData, oldSettings
+			if needFace {
+				face.Close()
+				if data != nil {
+					data.Close()
+				}
+			}
+			return fmt.Errorf("重读章节失败: %w", err)
+		}
+		pages, err := paginate(text, a.bodyFace)
+		if err != nil {
+			a.bodyFace, a.fontData, a.settings = oldFace, oldData, oldSettings
+			if needFace {
+				face.Close()
+				if data != nil {
+					data.Close()
+				}
+			}
+			return fmt.Errorf("重分页失败: %w", err)
+		}
+		if len(pages) == 0 {
+			pages = []Page{{Start: 0, End: len(text)}}
+		}
+		a.pages = pages
+		a.readerPage = pageIndexAt(a.pages, offset)
+	}
+
+	if persist {
+		if err := saveReaderSettings(a.settings); err != nil {
+			// 回滚已应用的字体/分页，保持文件与内存一致
+			a.bodyFace, a.fontData, a.settings = oldFace, oldData, oldSettings
+			if needFace {
+				face.Close()
+				if data != nil {
+					data.Close()
+				}
+			}
+			return fmt.Errorf("保存设置失败: %w", err)
+		}
+	}
+
+	if needFace {
+		if oldFace != nil {
+			oldFace.Close()
+		}
+		if oldData != nil {
+			oldData.Close()
+		}
+	}
+	return nil
 }
 
 // fail 进入错误屏。

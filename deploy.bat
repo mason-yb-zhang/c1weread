@@ -1,21 +1,23 @@
 @echo off
-rem c1weread deploy: push binary + manifest + credentials to device.
+:: c1weread deploy: push payload (bin + assets) + manifest + credentials to device.
 setlocal
 cd /d %~dp0
 
 set "APP=/storage/c1/local-apps/apps/weread"
-set "BIN=%APP%/bin/c1weread"
 set "MANIFEST=/storage/c1/local-apps/manifests/20-weread.json"
 
-echo [1/3] push binary...
-adb shell "mkdir -p %APP%/bin %APP%/data" || goto :fail
-adb push out\c1weread %BIN% || goto :fail
-adb shell "chmod 755 %BIN%" || goto :fail
+echo [1/4] prepare remote directories...
+adb shell "mkdir -p %APP%/bin %APP%/data %APP%/assets/fonts" || goto :fail
 
-echo [2/3] push manifest...
+echo [2/4] push payload...
+adb push payload\bin\c1weread %APP%/bin/c1weread || goto :fail
+adb shell "chmod 755 %APP%/bin/c1weread" || goto :fail
+adb push payload\assets\fonts\ %APP%/assets/fonts/ || goto :fail
+
+echo [3/4] push manifest...
 adb push out\20-weread.json %MANIFEST% || goto :fail
 
-echo [3/3] push credentials (if local creds.json exists)...
+echo [4/4] push credentials (if local creds.json exists)...
 if exist creds.json (
     adb push creds.json %APP%/data/creds.json || goto :fail
 ) else (
