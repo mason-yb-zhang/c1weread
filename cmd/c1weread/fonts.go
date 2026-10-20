@@ -18,8 +18,12 @@ const (
 	fontUnifont  = "unifont"
 	fontFusion12 = "fusion12"
 	fontLXGW     = "lxgw"
+	fontMiSans   = "misans"
+	fontNeoXiHei = "neoxihei"
 
-	lxgwFileName    = "LXGWWenKaiLite-Regular.ttf"
+	lxgwFileName     = "LXGWWenKaiLite-Regular.ttf"
+	misansFileName   = "MiSans-Regular.ttf"
+	neoxiheiFileName = "LXGWNeoXiHei.ttf"
 	fusion12FileName = "fusion12.bin"
 
 	maxFontBytes = 16 << 20
@@ -35,12 +39,13 @@ type ReaderSettings struct {
 }
 
 func defaultReaderSettings() ReaderSettings {
-	return ReaderSettings{Font: fontUnifont, Size: 16, Threshold: 128}
+	// 默认 MiSans：小字号 1bpp 屏显最清晰；字体文件缺失时启动会回退 Unifont 并提示。
+	return ReaderSettings{Font: fontMiSans, Size: 14, Threshold: 128}
 }
 
 func validReaderFontName(name string) bool {
 	switch name {
-	case fontUnifont, fontFusion12, fontLXGW:
+	case fontUnifont, fontFusion12, fontLXGW, fontMiSans, fontNeoXiHei:
 		return true
 	}
 	return false
@@ -216,19 +221,28 @@ func newReaderFace(settings ReaderSettings) (*c1device.Face, *mappedFont, error)
 		face, err := c1device.NewPixel12Face(data)
 		return face, nil, err
 	case fontLXGW:
-		path := filepath.Join(readerFontsDir(), lxgwFileName)
-		mapped, err := openMappedFont(path)
-		if err != nil {
-			return nil, nil, fmt.Errorf("加载 %s: %w", lxgwFileName, err)
-		}
-		face, err := mapped.typeface.NewFace(float64(settings.Size))
-		if err != nil {
-			mapped.Close()
-			return nil, nil, err
-		}
-		return face, mapped, nil
+		return openTTFFace(lxgwFileName, settings.Size)
+	case fontMiSans:
+		return openTTFFace(misansFileName, settings.Size)
+	case fontNeoXiHei:
+		return openTTFFace(neoxiheiFileName, settings.Size)
 	}
 	return nil, nil, fmt.Errorf("未知字体 %q", settings.Font)
+}
+
+// openTTFFace 从运行时字体目录加载 TTF 并建 Face（阈值渲染用）。
+func openTTFFace(fileName string, size int) (*c1device.Face, *mappedFont, error) {
+	path := filepath.Join(readerFontsDir(), fileName)
+	mapped, err := openMappedFont(path)
+	if err != nil {
+		return nil, nil, fmt.Errorf("加载 %s: %w", fileName, err)
+	}
+	face, err := mapped.typeface.NewFace(float64(size))
+	if err != nil {
+		mapped.Close()
+		return nil, nil, fmt.Errorf("创建 %s Face: %w", fileName, err)
+	}
+	return face, mapped, nil
 }
 
 func fontDisplayName(settings ReaderSettings) string {
@@ -239,11 +253,21 @@ func fontDisplayName(settings ReaderSettings) string {
 		return "Fusion 12"
 	case fontLXGW:
 		return "霞鹜文楷"
+	case fontMiSans:
+		return "MiSans"
+	case fontNeoXiHei:
+		return "新晰黑"
 	}
 	return settings.Font
 }
 
-func isTTF(font string) bool { return font == fontLXGW }
+func isTTF(font string) bool {
+	switch font {
+	case fontLXGW, fontMiSans, fontNeoXiHei:
+		return true
+	}
+	return false
+}
 
 // fallbackMessage 清理文件名中的控制字符，用于状态提示。
 func sanitizeMessage(s string) string {

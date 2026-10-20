@@ -107,23 +107,41 @@ payload 布局：`payload/bin/c1weread`（`out\c1weread` 拷入）+ 可选 `payl
 
 | 按键 | 作用 |
 |---|---|
-| ↑ / ↓ | 选择（书架/目录/设置）；阅读时翻页（跨章自动衔接） |
+| ↑ / ↓ | 选择（书架/目录/设置/最近阅读）；阅读时翻页（跨章自动衔接） |
 | ← / → | 调整设置项数值 |
-| OK | 打开书 / 进入章节；同步失败时重试 |
+| OK | 打开书 / 进入章节；阅读时切换全屏；同步失败时重试 |
 | ← / Back | 返回目录 / 书架；设置屏返回阅读器；错误屏返回书架 |
+| R | 书架进入/退出最近阅读 |
 | S | 阅读器中进入/退出字体设置 |
+| F | 阅读器中切换全屏（同 OK） |
+| 音量+ / 音量- | 等同 ↓ / ↑：阅读时翻页，列表中选择（同 reader-lab） |
 
 首次打开一本书会自动下载全部章节（每章间隔 200ms，屏上显示进度），
 之后离线可读。下载中按 Back 取消。
+
+## 四·B、界面骨架（移植自 reader-lab）
+
+书架/目录/最近阅读三个列表视图共用一套骨架（对应 reader-lab `renderList`）：
+顶栏为标题 + 数量与分隔线，底栏为倒显按键提示（有状态/消息时替换为消息文本）。
+阅读器对应 reader-lab `renderReader`：
+
+- **顶栏**：章节标题（书名·章名）左对齐，页码 `n/m` 与全书百分比右对齐，下加分隔线。
+  百分比整本下载完成后按字节精确计算（`manifest.json` 记录 `totalBytes`），
+  未整本下载的书退回按章节序号比例估算。
+- **底栏**：倒显按键提示 `←目录 ↑↓翻页 OK全屏 S设置`。
+- **全屏**：OK / F 切换，只画正文（顶部留 4px 边距，同 reader-lab），
+  切换时重分页并保持当前页首字节偏移。
+- **最近阅读**：书架按 R 进入，按最近阅读时间倒序（`progress.json` 记录 `updated`），
+  OK 续读——章节齐全直达阅读器，缺章先补全再恢复；打开书时若有进度同样自动续读。
 
 ## 五、数据目录
 
 `/storage/c1/local-apps/apps/weread/data/`
 
 - `creds.json` — 凭证（PC 生成；应用 renewal 成功后会自动原子更新）
-- `books/<bookId>/manifest.json` — 书名 + 章节表
+- `books/<bookId>/manifest.json` — 书名 + 章节表 + 全书总字节（下载完成时记录，顶栏百分比用）
 - `books/<bookId>/<chapterIdx>_<chapterUid>.txt` — 章节纯文本
-- `progress.json` — 每本书 `{chapterIdx, page}` 阅读进度
+- `progress.json` — 每本书 `{chapterIdx, page, updated}` 阅读进度（updated 为最近阅读时间戳）
 - `reader-settings.json` — 阅读字体/字号/阈值设置
 
 环境变量 `C1WEREAD_DATA` 可覆盖数据目录（PC 预览测试用）。
@@ -135,14 +153,18 @@ payload 布局：`payload/bin/c1weread`（`out\c1weread` 拷入）+ 可选 `payl
 
 | 字体 | 来源 | 加载方式 | 字号支持 |
 |---|---|---|---|
+| MiSans | 小米澎湃 OS 系统字体（免费商用+允许嵌入） | `payload/assets/fonts/MiSans-Regular.ttf` | 12/14/16/18/20/24 px（默认） |
 | Unifont 16 | GNU Unifont 子集 | `go:embed` 内嵌 | 12/14/16/18/20/24 px（缩放） |
 | Fusion Pixel 12px | https://github.com/TakWolf/fusion-pixel-font | `payload/assets/fonts/fusion12.bin` | 原生 12 px |
 | 霞鹜文楷 LXGW WenKai | https://github.com/lxgw/LxgwWenKai | `payload/assets/fonts/LXGWWenKaiLite-Regular.ttf` | 12/14/16/18/20/24 px |
+| 霞鹜新晰黑 LXGW Neo XiHei | https://github.com/lxgw/LxgwNeoXiHei（IPA 许可） | `payload/assets/fonts/LXGWNeoXiHei.ttf` | 12/14/16/18/20/24 px |
 
 - 字号档位：12 / 14 / 16 / 18 / 20 / 24 px；行高随字体真实 metrics。
-- 黑白阈值 32–224（默认 128）仅影响 TTF（霞鹜文楷）栅格化；点阵字体不受阈值影响。
+- 黑白阈值 32–224（默认 128）仅影响 TTF（MiSans / 文楷 / 新晰黑）栅格化；点阵字体不受阈值影响。
 - Fusion 原生点阵固定 12 px，选择该字体时字号锁定为 12。
 - 运行时字体缺失时自动回退到内嵌 Unifont，并提示。
+- **默认 MiSans**：小字号 1bpp 屏显实测最清晰（样张对比见开发记录 `out/fontcmp/`）。
+  若部署包未带 MiSans 文件，首次启动回退 Unifont，设置里仍可手动切换。
 
 许可证：
 

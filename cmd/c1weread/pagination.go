@@ -9,8 +9,8 @@ import (
 )
 
 const readerBodyWidth = c1device.DisplayWidth - 8
-const readerBodyTop = rowH
-const readerBodyHeight = c1device.DisplayHeight - rowH - 8
+const readerBodyHeight = c1device.DisplayHeight - 2*rowH
+const readerFooterY = c1device.DisplayHeight - rowH
 
 // Page 表示一页正文，Start/End 为章节文本中的字节偏移。
 type Page struct {
@@ -24,16 +24,19 @@ type positionedLine struct {
 	start, end int
 }
 
-// paginate 把一段 UTF-8 文本按给定 Face 的度量和固定阅读区高度分成若干页。
-func paginate(text string, face *c1device.Face) ([]Page, error) {
+// paginate 把一段 UTF-8 文本按给定 Face 的度量和指定阅读区高度分成若干页。
+func paginate(text string, face *c1device.Face, height int) ([]Page, error) {
 	if face == nil {
 		return nil, fmt.Errorf("paginate: face is nil")
+	}
+	if height < 1 {
+		height = 1
 	}
 	lineHeight := face.LineHeight()
 	if lineHeight < 1 {
 		lineHeight = 1
 	}
-	perPage := readerBodyHeight / lineHeight
+	perPage := height / lineHeight
 	if perPage < 1 {
 		perPage = 1
 	}

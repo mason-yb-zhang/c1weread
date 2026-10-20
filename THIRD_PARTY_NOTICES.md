@@ -35,3 +35,17 @@
 - License: SIL Open Font License 1.1
 - File: `payload/assets/fonts/LXGWWenKaiLite-Regular.ttf`
 - License file: `payload/assets/fonts/OFL-LXGW.txt`
+
+### MiSans
+
+- Source: https://hyperos.mi.com/font/zh/ (小米澎湃 OS 字体官网)
+- License: MiSans 字体知识产权许可协议 — 免费商用，允许嵌入软件/设备（需注明使用）；完整摘要见 `payload/assets/fonts/MiSans-LICENSE.txt`
+- File: `payload/assets/fonts/MiSans-Regular.ttf`（源文件入 `assets/fonts/`）
+- Version: MiSans Regular（MIUI 13 / HyperOS 系统字体）
+
+### LXGW Neo XiHei / 霞鹜新晰黑
+
+- Source: https://github.com/lxgw/LxgwNeoXiHei
+- License: IPA Font License Agreement v1.0
+- File: `payload/assets/fonts/LXGWNeoXiHei.ttf`（源文件入 `assets/fonts/`）
+- License file: `payload/assets/fonts/LXGWNeoXiHei-LICENSE.txt`

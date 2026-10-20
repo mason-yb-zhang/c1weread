@@ -50,6 +50,8 @@ type manifest struct {
 	Title    string        `json:"title"`
 	Author   string        `json:"author"`
 	Chapters []chapterMeta `json:"chapters"`
+	// TotalBytes 全书正文字节总数，整本下载完成时记录，用于顶栏全书百分比。
+	TotalBytes int64 `json:"totalBytes,omitempty"`
 }
 
 func bookDir(bookID string) string { return filepath.Join(dataDir(), "books", bookID) }
@@ -110,8 +112,9 @@ func atomicWrite(path string, v any) error {
 
 // bookProgress 单本书的阅读进度。
 type bookProgress struct {
-	ChapterIdx int `json:"chapterIdx"`
-	Page       int `json:"page"`
+	ChapterIdx int   `json:"chapterIdx"`
+	Page       int   `json:"page"`
+	Updated    int64 `json:"updated,omitempty"` // 最近阅读时间戳，最近阅读列表按它倒序
 }
 
 // loadProgress 读全部进度。

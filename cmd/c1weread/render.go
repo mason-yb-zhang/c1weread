@@ -16,7 +16,6 @@ const (
 	contentY    = rowH
 	listRows    = 7 // 列表行数（第 8 行留给状态）
 	statusY     = contentY + listRows*rowH
-	readerRows  = 8 // 阅读器正文行数
 	textWidthPx = 288
 )
 
@@ -30,6 +29,7 @@ const (
 	viewCatalog
 	viewReader
 	viewSettings
+	viewRecent
 	viewError
 )
 
@@ -63,6 +63,8 @@ func (a *app) render() c1device.Frame {
 		a.renderReader(c)
 	case viewSettings:
 		a.renderSettings(c)
+	case viewRecent:
+		a.renderRecent(c)
 	case viewError:
 		c.DrawText(a.face, 2, titleY, "出错")
 		drawPlainLines(c, a.face, wrapStatusLines(a.errMsg))
@@ -80,9 +82,12 @@ func drawPlainLines(c *c1device.Canvas, face *c1device.Face, lines []string) {
 	}
 }
 
-// renderShelf 书架列表。
+// renderShelf 书架列表。顶栏带册数与分隔线，底栏为倒显按键提示（有状态时显示状态）。
+// 骨架移植自 reader-lab app.go renderList。
 func (a *app) renderShelf(c *c1device.Canvas) {
 	c.DrawText(a.face, 2, titleY, "书架")
+	c.DrawTextRight(a.face, c1device.DisplayWidth-2, titleY, fmt.Sprintf("%d 本", len(a.shelf)))
+	c.FillRect(image.Rect(2, contentY-2, c1device.DisplayWidth-2, contentY))
 	count := len(a.shelf)
 	if count == 0 {
 		msg := a.status
@@ -113,11 +118,12 @@ func (a *app) renderShelf(c *c1device.Canvas) {
 		}
 		c.DrawScrollIndicator(c1device.DisplayWidth-3, contentY, contentY+listRows*rowH, sel, count)
 	}
-	status := a.status
-	if status == "" {
-		status = "OK 打开  ↑↓选择"
+	if a.status != "" {
+		c.DrawInvertedTextBar(a.face, image.Rect(0, statusY, c1device.DisplayWidth, c1device.DisplayHeight),
+			truncateToWidth(a.face, a.status, c1device.DisplayWidth-4))
+	} else {
+		drawNavFooter(c, a.face, statusY, "OK打开", "↑↓选择", "R最近", "Back退出")
 	}
-	c.DrawText(a.face, 2, statusY, status)
 }
 
 // renderDownload 下载进度。
@@ -148,9 +154,11 @@ func (a *app) renderDownload(c *c1device.Canvas) {
 func (a *app) renderCatalog(c *c1device.Canvas) {
 	title := "目录"
 	if a.currentBook != nil {
-		title = truncateToWidth(a.face, a.currentBook.Title+"·目录", 220)
+		title = a.currentBook.Title + "·目录"
 	}
-	c.DrawText(a.face, 2, titleY, title)
+	c.DrawText(a.face, 2, titleY, truncateToWidth(a.face, title, c1device.DisplayWidth-70))
+	c.DrawTextRight(a.face, c1device.DisplayWidth-2, titleY, fmt.Sprintf("%d 章", len(a.chapters)))
+	c.FillRect(image.Rect(2, contentY-2, c1device.DisplayWidth-2, contentY))
 	count := len(a.chapters)
 	if count == 0 {
 		c.DrawText(a.face, 2, contentY, "无章节")
@@ -176,16 +184,73 @@ func (a *app) renderCatalog(c *c1device.Canvas) {
 		}
 		c.DrawScrollIndicator(c1device.DisplayWidth-3, contentY, contentY+listRows*rowH, sel, count)
 	}
-	c.DrawText(a.face, 2, statusY, "OK 阅读  ←返回书架")
+	drawNavFooter(c, a.face, statusY, "←书架", "↑↓选择", "OK阅读")
+}
+
+// renderRecent 最近阅读列表：书名 · 最近章节，OK 续读。
+func (a *app) renderRecent(c *c1device.Canvas) {
+	c.DrawText(a.face, 2, titleY, "最近阅读")
+	c.DrawTextRight(a.face, c1device.DisplayWidth-2, titleY, fmt.Sprintf("%d 本", len(a.recentBooks)))
+	c.FillRect(image.Rect(2, contentY-2, c1device.DisplayWidth-2, contentY))
+	count := len(a.recentBooks)
+	if count == 0 {
+		c.DrawTextCentered(a.face, c1device.DisplayWidth/2, contentY+3*rowH, "暂无阅读记录")
+		c.DrawTextCentered(a.face, c1device.DisplayWidth/2, contentY+5*rowH, "开始阅读后自动记录")
+	} else {
+		first, sel := a.recentFirst, a.recentSel
+		for row := 0; row < listRows; row++ {
+			idx := first + row
+			if idx >= count {
+				break
+			}
+			top := contentY + row*rowH
+			rect := image.Rect(0, top, c1device.DisplayWidth, top+rowH)
+			r := a.recentBooks[idx]
+			label := " " + r.Title
+			if r.ChapterTitle != "" {
+				label += " · " + r.ChapterTitle
+			}
+			label = truncateToWidth(a.face, label, c1device.DisplayWidth-4)
+			if idx == sel {
+				c.DrawInvertedTextBar(a.face, rect, label)
+			} else {
+				c.DrawText(a.face, 2, top, label)
+			}
+		}
+		c.DrawScrollIndicator(c1device.DisplayWidth-3, contentY, contentY+listRows*rowH, sel, count)
+	}
+	drawNavFooter(c, a.face, statusY, "←书架", "↑↓选择", "OK续读")
 }
 
 // renderReader 正文阅读页。
+// 普通模式：顶栏（章节标题 / 页码 / 全书百分比 + 分隔线）、正文、倒显底栏按键提示；
+// 全屏模式只画正文。骨架移植自 reader-lab app.go renderReader。
 func (a *app) renderReader(c *c1device.Canvas) {
-	title := truncateToWidth(a.face, a.readerTitle, c1device.DisplayWidth-40)
-	c.DrawText(a.face, 2, titleY, title)
+	if a.fullscreen {
+		a.renderReaderBody(c, a.readerBodyTop())
+		return
+	}
 	pageCount := max(1, len(a.pages))
-	c.DrawTextRight(a.face, c1device.DisplayWidth-2, titleY,
-		fmt.Sprintf("%d/%d", a.readerPage+1, pageCount))
+	pageLabel := fmt.Sprintf("%d/%d", a.readerPage+1, pageCount)
+	pctLabel := fmt.Sprintf("%.1f%%", a.bookPercent())
+	pageW := a.face.Measure(pageLabel)
+	pctW := a.face.Measure(pctLabel)
+	pageX := c1device.DisplayWidth - 2 - pctW - 8 - pageW
+	c.DrawText(a.face, pageX, titleY, pageLabel)
+	c.DrawTextRight(a.face, c1device.DisplayWidth-2, titleY, pctLabel)
+	c.DrawText(a.face, 2, titleY, truncateToWidth(a.face, a.readerTitle, pageX-2-6))
+	c.FillRect(image.Rect(2, contentY-2, c1device.DisplayWidth-2, contentY))
+	a.renderReaderBody(c, contentY)
+	if a.message != "" {
+		c.DrawInvertedTextBar(a.face, image.Rect(0, readerFooterY, c1device.DisplayWidth, c1device.DisplayHeight),
+			truncateToWidth(a.face, a.message, c1device.DisplayWidth-4))
+	} else {
+		drawNavFooter(c, a.face, readerFooterY, "←目录", "↑↓翻页", "OK全屏", "S设置")
+	}
+}
+
+// renderReaderBody 画当前页正文行（TTF 走阈值二值化），右侧画页面滚动条。
+func (a *app) renderReaderBody(c *c1device.Canvas, top int) {
 	if len(a.pages) == 0 {
 		return
 	}
@@ -194,17 +259,38 @@ func (a *app) renderReader(c *c1device.Canvas) {
 	if lineHeight < 1 {
 		lineHeight = rowH
 	}
-	for i, line := range page.Lines {
-		top := readerBodyTop + i*lineHeight
+	for _, line := range page.Lines {
 		if isTTF(a.settings.Font) {
 			c.DrawTextThreshold(a.bodyFace, 4, top, line, uint8(a.settings.Threshold))
 		} else {
 			c.DrawText(a.bodyFace, 4, top, line)
 		}
+		top += lineHeight
 	}
+	pageCount := max(1, len(a.pages))
 	if pageCount > 1 {
-		c.DrawScrollIndicator(c1device.DisplayWidth-3, readerBodyTop, readerBodyTop+len(page.Lines)*lineHeight, a.readerPage, pageCount)
+		bodyTop := a.readerBodyTop()
+		c.DrawScrollIndicator(c1device.DisplayWidth-3, bodyTop, bodyTop+len(page.Lines)*lineHeight, a.readerPage, pageCount)
 	}
+}
+
+// drawNavFooter 倒显底栏：按键提示按从左到右均匀铺开。
+// 移植自 reader-lab navigation_ui.go drawNavigationFooter（四格提示的通用化）。
+func drawNavFooter(c *c1device.Canvas, face *c1device.Face, top int, labels ...string) {
+	bar := image.Rect(0, top, c1device.DisplayWidth, c1device.DisplayHeight)
+	n := len(labels)
+	if n == 0 {
+		c.InvertRect(bar)
+		return
+	}
+	slot := (c1device.DisplayWidth - 8) / n
+	if slot < 8 {
+		slot = 8
+	}
+	for i, label := range labels {
+		c.DrawText(face, 4+i*slot, top+4, truncateToWidth(face, label, slot-4))
+	}
+	c.InvertRect(bar)
 }
 
 // renderSettings 阅读设置视图。

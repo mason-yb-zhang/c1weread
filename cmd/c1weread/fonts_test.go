@@ -118,7 +118,7 @@ func TestPaginateWithUnifont(t *testing.T) {
 	}
 
 	text := "第一章\n" + repeatString("abcdefghijklmnopqrstuvwxyz\n", 50)
-	pages, err := paginate(text, face)
+	pages, err := paginate(text, face, readerBodyHeight)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestPaginateWithFusion12(t *testing.T) {
 
 	text := "　　这是一段用于测试 Fusion 12px 点阵分页的中文文本。反复重复以跨越多页。"
 	text += repeatString("中文字符测试。", 80)
-	pages, err := paginate(text, face)
+	pages, err := paginate(text, face, readerBodyHeight)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestPaginateMixedASCII(t *testing.T) {
 	}
 
 	text := "Hello 世界123abc中文测试。"
-	pages, err := paginate(text, face)
+	pages, err := paginate(text, face, readerBodyHeight)
 	if err != nil {
 		t.Fatal(err)
 	}

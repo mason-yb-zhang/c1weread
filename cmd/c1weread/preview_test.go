@@ -29,7 +29,11 @@ func TestPreview(t *testing.T) {
 	}
 
 	readerText := "　　持续交付是一种软件工程方法，强调小步快跑、频繁验证。本章从三个案例出发，说明为什么发布频率决定了软件交付的质量与速度。"
-	readerPages, err := paginate(readerText, face)
+	readerPages, err := paginate(readerText, face, readerBodyHeight)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fullscreenPages, err := paginate(readerText, face, c1device.DisplayHeight-2*4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,19 +71,43 @@ func TestPreview(t *testing.T) {
 			face:        face,
 			bodyFace:    face,
 			view:        viewReader,
-			currentBook: &manifest{BookID: "43208843", Title: "持续交付2.0", Chapters: chapters},
+			currentBook: &manifest{BookID: "43208843", Title: "持续交付2.0", Chapters: chapters, TotalBytes: 20480},
 			chapters:    chapters,
+			bookPrefix:  []int64{0, 4096, 8192, 12288, 16384, 18432},
+			bookTotal:   20480,
 			readerTitle: "持续交付2.0·第二章 转机",
 			pages:       readerPages,
 			readerPage:  0,
-			settings:    defaultReaderSettings(),
+			settings:    ReaderSettings{Font: fontUnifont, Size: 16, Threshold: 128},
+		}},
+		{"reader-fullscreen", &app{
+			face:        face,
+			bodyFace:    face,
+			view:        viewReader,
+			fullscreen:  true,
+			currentBook: &manifest{BookID: "43208843", Title: "持续交付2.0", Chapters: chapters},
+			chapters:    chapters,
+			readerTitle: "持续交付2.0·第二章 转机",
+			pages:       fullscreenPages,
+			readerPage:  0,
+			settings:    ReaderSettings{Font: fontUnifont, Size: 16, Threshold: 128},
+		}},
+		{"recent", &app{
+			face: face,
+			view: viewRecent,
+			recentBooks: []recentBook{
+				{BookID: "32212941", Title: "中医许阳", ChapterTitle: "第三章 长夜", ChapterIdx: 3, Page: 2, Updated: 1729430400},
+				{BookID: "43208843", Title: "持续交付2.0", ChapterTitle: "第二章 转机", ChapterIdx: 2, Page: 0, Updated: 1729344000},
+			},
+			recentSel:   0,
+			recentFirst: 0,
 		}},
 		{"settings", &app{
 			face:        face,
 			bodyFace:    face,
 			view:        viewSettings,
 			currentBook: &manifest{BookID: "43208843", Title: "持续交付2.0"},
-			settings:    defaultReaderSettings(),
+			settings:    ReaderSettings{Font: fontUnifont, Size: 16, Threshold: 128},
 			settingsSel: 1,
 		}},
 		{"error", &app{
@@ -97,35 +125,45 @@ func TestPreview(t *testing.T) {
 		}},
 	}
 
-	// 若运行时字体目录存在霞鹜文楷，则额外渲染一帧 lxgw 14px 阅读视图；
-	// 缺失时自动回退，测试不失败。
-	lxgwSettings := ReaderSettings{Font: fontLXGW, Size: 14, Threshold: 128}
-	lxgwFace, lxgwData, err := newReaderFace(lxgwSettings)
-	if err == nil {
-		defer lxgwFace.Close()
-		if lxgwData != nil {
-			defer lxgwData.Close()
+	// 若运行时字体目录存在对应 TTF，则额外渲染 14px 阅读视图；缺失时跳过，测试不失败。
+	for _, fc := range []struct {
+		name     string
+		settings ReaderSettings
+	}{
+		{"reader-lxgw", ReaderSettings{Font: fontLXGW, Size: 14, Threshold: 128}},
+		{"reader-misans", ReaderSettings{Font: fontMiSans, Size: 14, Threshold: 128}},
+	} {
+		bodyFace, fontData, err := newReaderFace(fc.settings)
+		if err != nil {
+			t.Logf("%s: 字体不可用，跳过: %v", fc.name, err)
+			continue
 		}
-		lxgwPages, err := paginate(readerText, lxgwFace)
-		if err == nil {
-			cases = append(cases, struct {
-				name string
-				app  *app
-			}{
-				"reader-lxgw",
-				&app{
-					face:        face,
-					bodyFace:    lxgwFace,
-					view:        viewReader,
-					currentBook: &manifest{BookID: "43208843", Title: "持续交付2.0", Chapters: chapters},
-					chapters:    chapters,
-					readerTitle: "持续交付2.0·第二章 转机",
-					pages:       lxgwPages,
-					readerPage:  0,
-					settings:    lxgwSettings,
-				},
-			})
+		pages, err := paginate(readerText, bodyFace, readerBodyHeight)
+		if err != nil {
+			bodyFace.Close()
+			if fontData != nil {
+				fontData.Close()
+			}
+			t.Fatal(err)
 		}
+		cases = append(cases, struct {
+			name string
+			app  *app
+		}{
+			fc.name,
+			&app{
+				face:        face,
+				bodyFace:    bodyFace,
+				fontData:    fontData,
+				view:        viewReader,
+				currentBook: &manifest{BookID: "43208843", Title: "持续交付2.0", Chapters: chapters},
+				chapters:    chapters,
+				readerTitle: "持续交付2.0·第二章 转机",
+				pages:       pages,
+				readerPage:  0,
+				settings:    fc.settings,
+			},
+		})
 	}
 
 	outDir := filepath.Join("..", "..", "out")

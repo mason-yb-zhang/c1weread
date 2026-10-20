@@ -24,7 +24,9 @@ go build -trimpath -ldflags "-s -w -buildid=" -o out\c1weread.exe .\cmd\c1weread
 set "GOOS=" & set "GOARCH=" & set "GOMIPS=" & set "CGO_ENABLED="
 
 echo [2/5] finalize binary + manifest...
-py -3 scripts\build_aux.py out\c1weread.exe out\20-weread.json || goto :fail
+:: 优先 py 启动器，缺失时退回 python（并吞掉 -3 标志仅为 py 所有）。
+where py >nul 2>nul && set "PY=py -3" || set "PY=python"
+call %PY% scripts\build_aux.py out\c1weread.exe out\20-weread.json || goto :fail
 
 echo [3/5] stage payload...
 :: local-apps only cares about manifest + bin/c1weread; assets/ is for runtime font loading.
@@ -39,6 +41,15 @@ if exist ..\..\repos\reader-lab\App\book-reader\assets\fusion12.bin (
 )
 if exist assets\font-LICENSE.txt (
     copy /y assets\font-LICENSE.txt payload\assets\fonts\pkg-font-LICENSE.txt >nul
+)
+:: MiSans / 霞鹜新晰黑 源文件入本仓库 assets\fonts\（payload 被 gitignore，构建时 staging）。
+if exist assets\fonts\MiSans-Regular.ttf (
+    copy /y assets\fonts\MiSans-Regular.ttf payload\assets\fonts\ >nul
+    copy /y assets\fonts\MiSans-LICENSE.txt payload\assets\fonts\ >nul
+)
+if exist assets\fonts\LXGWNeoXiHei.ttf (
+    copy /y assets\fonts\LXGWNeoXiHei.ttf payload\assets\fonts\ >nul
+    copy /y assets\fonts\LXGWNeoXiHei-LICENSE.txt payload\assets\fonts\ >nul
 )
 
 echo [4/5] Windows binaries (preview + login tool)...

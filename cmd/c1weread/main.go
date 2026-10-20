@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -20,6 +21,15 @@ import (
 
 //go:embed assets/pkg-font.bin
 var fontData []byte
+
+type recentBook struct {
+	BookID       string
+	Title        string
+	ChapterTitle string
+	ChapterIdx   int
+	Page         int
+	Updated      int64
+}
 
 type app struct {
 	face    *c1device.Face // UI 字体（内嵌 Unifont 16px）
@@ -47,9 +57,22 @@ type app struct {
 	pages             []Page     // 当前章分页结果
 	readerPage        int
 	readerTitle       string
+	fullscreen        bool       // 阅读器全屏模式（会话级，不持久化）
 	settings          ReaderSettings
 	settingsSel       int
 	progress          map[string]bookProgress
+
+	recentBooks []recentBook
+	recentSel   int
+	recentFirst int
+
+	// 全书百分比统计：bookPrefix[i] = chapters[i] 之前所有章节落盘字节合计；bookTotal = 全书总字节。
+	bookPrefix []int64
+	bookTotal  int64
+
+	// 书架/最近阅读打开时若有进度，下载完成后直接恢复阅读
+	resumeChapter int
+	resumePage    int
 }
 
 // writeTrace 向数据目录的 c1weread.trace 追加一行（崩溃/信号诊断用，与启动器日志无关）。
@@ -169,6 +192,14 @@ func main() {
 			if !ok {
 				return
 			}
+			// 音量键映射为方向键（同 reader-lab）：音量+ = ↓ 下页/下移，音量- = ↑ 上页/上移。
+			// 在 repeat 过滤之前 remap，长按音量键可连续翻页。
+			switch ev.Key {
+			case c1device.KeyVolumeUp:
+				ev.Key = c1device.KeyDown
+			case c1device.KeyVolumeDown:
+				ev.Key = c1device.KeyUp
+			}
 			if ev.Repeat && ev.Key != c1device.KeyUp && ev.Key != c1device.KeyDown {
 				continue
 			}
@@ -183,6 +214,14 @@ func main() {
 				a.fail(dlErr.Error())
 			} else if a.downloadCancelled {
 				a.view = viewShelf
+			} else if a.resumeChapter >= 0 {
+				idx := a.chapterIndexForIdx(a.resumeChapter)
+				if idx >= 0 {
+					a.openChapter(idx, a.resumePage)
+				} else {
+					a.enterCatalog()
+				}
+				a.resumeChapter = -1
 			} else {
 				a.enterCatalog()
 			}
@@ -226,6 +265,7 @@ func (a *app) syncShelf() {
 
 // handleEvent 分发按键；返回 true 表示退出。
 func (a *app) handleEvent(ev c1device.Event, cancel context.CancelFunc) bool {
+	a.message = "" // 临时提示只存活到下一次按键（reader-lab 同款语义）
 	switch a.view {
 	case viewGuide:
 		if ev.Key == c1device.KeyBack || ev.Key == c1device.KeyOK {
@@ -234,6 +274,8 @@ func (a *app) handleEvent(ev c1device.Event, cancel context.CancelFunc) bool {
 		}
 	case viewShelf:
 		return a.handleShelf(ev, cancel)
+	case viewRecent:
+		return a.handleRecent(ev)
 	case viewCatalog:
 		return a.handleCatalog(ev)
 	case viewReader:
@@ -281,6 +323,10 @@ func (a *app) handleShelf(ev c1device.Event, cancel context.CancelFunc) bool {
 			return false
 		}
 		a.openBook(a.shelf[a.shelfSel])
+	case c1device.KeyRune:
+		if ev.Rune == 'r' || ev.Rune == 'R' {
+			a.openRecent()
+		}
 	case c1device.KeyBack:
 		cancel()
 		return true
@@ -288,7 +334,7 @@ func (a *app) handleShelf(ev c1device.Event, cancel context.CancelFunc) bool {
 	return false
 }
 
-// openBook 打开一本书：章节齐全直接进目录，否则先补全下载（后台 goroutine，主循环渲染进度）。
+// openBook 打开一本书：有进度且章节齐全则直达阅读器；否则下载（或补全）后恢复阅读或进目录。
 func (a *app) openBook(book weread.ShelfBook) {
 	m, err := loadManifest(book.BookID)
 	if err != nil {
@@ -300,6 +346,23 @@ func (a *app) openBook(book weread.ShelfBook) {
 	}
 	a.currentBook = m
 	a.chapters = m.Chapters
+	a.refreshBookSizes()
+
+	p, hasProgress := a.progress[book.BookID]
+	a.resumeChapter, a.resumePage = -1, 0
+	if hasProgress {
+		a.resumeChapter, a.resumePage = p.ChapterIdx, p.Page
+	}
+
+	missing := a.missingChapters()
+	if hasProgress && missing == 0 {
+		idx := a.chapterIndexForIdx(p.ChapterIdx)
+		if idx >= 0 {
+			a.openChapter(idx, p.Page)
+			return
+		}
+	}
+
 	a.view = viewDownload
 	a.downloadCancelled = false
 	a.dlDone = make(chan error, 1)
@@ -367,6 +430,21 @@ func (a *app) downloadBook(m *manifest) {
 		}
 		a.downloadDone++
 		time.Sleep(200 * time.Millisecond)
+	}
+	// 整本下载完成：记录全书总字节（顶栏百分比用），写失败不阻塞（可退回章节比例估算）。
+	var total int64
+	for _, ch := range m.Chapters {
+		if fi, err := os.Stat(chapterFile(m.BookID, ch)); err == nil {
+			total += fi.Size()
+		}
+	}
+	if total > 0 {
+		m.TotalBytes = total
+		if err := saveManifest(m); err != nil {
+			writeTrace("save manifest totalBytes: %v", err)
+		} else {
+			a.currentBook = m
+		}
 	}
 	a.dlDone <- nil
 }
@@ -451,7 +529,7 @@ func (a *app) openChapter(idx, page int) {
 		text = fetched
 	}
 	a.readerTitle = a.currentBook.Title + "·" + ch.Title
-	pages, err := paginate(text, a.bodyFace)
+	pages, err := a.paginateChapter(text)
 	if err != nil {
 		a.fail(fmt.Sprintf("分页失败: %v", err))
 		return
@@ -462,43 +540,70 @@ func (a *app) openChapter(idx, page int) {
 	a.pages = pages
 	a.readerPage = clamp(page, 0, len(a.pages)-1)
 	a.catSel = idx // 阅读跨章后目录选中项跟着走，进度和返回才一致
+	a.refreshBookSizes()
 	a.view = viewReader
+	a.saveCurrentProgress()
 }
 
 // handleReader 阅读器按键。
 func (a *app) handleReader(ev c1device.Event) bool {
-	save := func(chapterIdx int) {
-		a.progress[a.currentBook.BookID] = bookProgress{ChapterIdx: chapterIdx, Page: a.readerPage}
-		if err := saveProgress(a.progress); err != nil {
-			fmt.Fprintln(os.Stderr, "c1weread: save progress:", err)
-		}
-	}
-	chapterIdx := a.chapters[a.catSel].Idx
 	switch ev.Key {
 	case c1device.KeyUp:
 		if a.readerPage > 0 {
 			a.readerPage--
-			save(chapterIdx)
+			a.saveCurrentProgress()
 		} else if a.catSel > 0 {
 			a.openChapter(a.catSel-1, lastPage(a, a.catSel-1))
+			a.saveCurrentProgress()
 		}
 	case c1device.KeyDown:
 		if a.readerPage < len(a.pages)-1 {
 			a.readerPage++
-			save(chapterIdx)
+			a.saveCurrentProgress()
 		} else if a.catSel < len(a.chapters)-1 {
 			a.openChapter(a.catSel+1, 0)
+			a.saveCurrentProgress()
 		}
+	case c1device.KeyOK:
+		a.toggleFullscreen()
 	case c1device.KeyLeft, c1device.KeyBack:
-		save(chapterIdx)
+		a.saveCurrentProgress()
 		a.view = viewCatalog
 	case c1device.KeyRune:
-		if ev.Rune == 's' || ev.Rune == 'S' {
+		switch ev.Rune {
+		case 's', 'S':
 			a.view = viewSettings
 			a.settingsSel = 0
+		case 'f', 'F':
+			a.toggleFullscreen()
 		}
 	}
 	return false
+}
+
+// saveCurrentProgress 保存当前书进度并刷新 Updated 时间戳。
+func (a *app) saveCurrentProgress() {
+	if a.currentBook == nil || a.catSel < 0 || a.catSel >= len(a.chapters) {
+		return
+	}
+	chapterIdx := a.chapters[a.catSel].Idx
+	a.progress[a.currentBook.BookID] = bookProgress{
+		ChapterIdx: chapterIdx,
+		Page:       a.readerPage,
+		Updated:    time.Now().Unix(),
+	}
+	if err := saveProgress(a.progress); err != nil {
+		fmt.Fprintln(os.Stderr, "c1weread: save progress:", err)
+	}
+}
+
+// toggleFullscreen 切换阅读器全屏模式，重分页并保持当前页首字节偏移。
+func (a *app) toggleFullscreen() {
+	if a.view != viewReader || len(a.pages) == 0 {
+		return
+	}
+	a.fullscreen = !a.fullscreen
+	a.repageCurrentChapter()
 }
 
 // lastPage 计算某章最后一页（用于上翻跨章）。
@@ -508,11 +613,218 @@ func lastPage(a *app, idx int) int {
 	if err != nil {
 		return 0
 	}
-	pages, err := paginate(text, a.bodyFace)
+	pages, err := paginate(text, a.bodyFace, a.readerBodyHeight())
 	if err != nil || len(pages) == 0 {
 		return 0
 	}
 	return len(pages) - 1
+}
+
+// readerBodyTop 返回正文区顶部 y 坐标（全屏留 4px 边距，同 reader-lab fullscreenBodyTop）。
+func (a *app) readerBodyTop() int {
+	if a.fullscreen {
+		return 4
+	}
+	return rowH
+}
+
+// readerBodyHeight 返回当前正文区高度（全屏时为整屏减边距）。
+func (a *app) readerBodyHeight() int {
+	if a.fullscreen {
+		return c1device.DisplayHeight - 2*4
+	}
+	return readerBodyHeight
+}
+
+// paginateChapter 使用当前正文区高度对当前章节分页。
+func (a *app) paginateChapter(text string) ([]Page, error) {
+	return paginate(text, a.bodyFace, a.readerBodyHeight())
+}
+
+// repageCurrentChapter 重新分页并尽量保持当前页首字节偏移。
+func (a *app) repageCurrentChapter() {
+	if a.currentBook == nil || a.catSel < 0 || a.catSel >= len(a.chapters) {
+		return
+	}
+	offset := 0
+	if a.readerPage >= 0 && a.readerPage < len(a.pages) {
+		offset = a.pages[a.readerPage].Start
+	}
+	text, err := chapterText(a.currentBook, a.chapters[a.catSel])
+	if err != nil {
+		a.message = sanitizeMessage(err.Error())
+		return
+	}
+	pages, err := a.paginateChapter(text)
+	if err != nil {
+		a.message = sanitizeMessage(err.Error())
+		return
+	}
+	if len(pages) == 0 {
+		pages = []Page{{Start: 0, End: len(text)}}
+	}
+	a.pages = pages
+	a.readerPage = pageIndexAt(a.pages, offset)
+}
+
+// chapterIndexForIdx 把章节 Idx 映射到 chapters 切片下标。
+func (a *app) chapterIndexForIdx(idx int) int {
+	for i, ch := range a.chapters {
+		if ch.Idx == idx {
+			return i
+		}
+	}
+	return -1
+}
+
+// refreshBookSizes 统计各章节落盘字节（前缀和）与全书总字节，供顶栏百分比使用。
+func (a *app) refreshBookSizes() {
+	a.bookPrefix, a.bookTotal = nil, 0
+	if a.currentBook == nil {
+		return
+	}
+	a.bookTotal = a.currentBook.TotalBytes
+	n := len(a.chapters)
+	a.bookPrefix = make([]int64, n)
+	sum := int64(0)
+	for i, ch := range a.chapters {
+		a.bookPrefix[i] = sum
+		if fi, err := os.Stat(chapterFile(a.currentBook.BookID, ch)); err == nil {
+			sum += fi.Size()
+		}
+	}
+	if a.bookTotal < sum {
+		// 记录的总字节比已落盘的还小（删过章节文件等异常），回退到章节比例估算。
+		a.bookTotal = 0
+	}
+}
+
+// bookPercent 估算全书阅读百分比。整本下载过（manifest.totalBytes > 0）按字节
+// （之前章节落盘字节合计 + 当前页在章内的字节偏移）；否则按章节序号比例回退。
+func (a *app) bookPercent() float64 {
+	n := len(a.chapters)
+	if n == 0 || a.catSel < 0 || a.catSel >= n {
+		return 0
+	}
+	pageFrac := 0.0
+	if len(a.pages) > 0 {
+		pageFrac = float64(clamp(a.readerPage, 0, len(a.pages)-1)) / float64(len(a.pages))
+	}
+	if a.bookTotal > 0 && len(a.bookPrefix) == n {
+		pos := a.bookPrefix[a.catSel]
+		if a.readerPage >= 0 && a.readerPage < len(a.pages) {
+			pos += int64(a.pages[a.readerPage].Start)
+		}
+		if pos > a.bookTotal {
+			pos = a.bookTotal
+		}
+		return float64(pos) * 100 / float64(a.bookTotal)
+	}
+	return (float64(a.catSel) + pageFrac) * 100 / float64(n)
+}
+
+// openRecent 进入最近阅读视图。
+func (a *app) openRecent() {
+	a.recentBooks = a.buildRecentBooks()
+	a.recentSel, a.recentFirst = 0, 0
+	a.view = viewRecent
+}
+
+// buildRecentBooks 按 Updated 倒序构造最近阅读列表，最多 10 条。
+func (a *app) buildRecentBooks() []recentBook {
+	books := make([]recentBook, 0, len(a.progress))
+	for bookID, p := range a.progress {
+		m, _ := loadManifest(bookID)
+		title := bookID
+		chapterTitle := ""
+		if m != nil && m.Title != "" {
+			title = m.Title
+		}
+		if m != nil {
+			for _, ch := range m.Chapters {
+				if ch.Idx == p.ChapterIdx {
+					chapterTitle = ch.Title
+					break
+				}
+			}
+		}
+		books = append(books, recentBook{
+			BookID:       bookID,
+			Title:        title,
+			ChapterTitle: chapterTitle,
+			ChapterIdx:   p.ChapterIdx,
+			Page:         p.Page,
+			Updated:      p.Updated,
+		})
+	}
+	sort.Slice(books, func(i, j int) bool {
+		if books[i].Updated == books[j].Updated {
+			return books[i].BookID < books[j].BookID
+		}
+		return books[i].Updated > books[j].Updated
+	})
+	if len(books) > 10 {
+		books = books[:10]
+	}
+	return books
+}
+
+// handleRecent 最近阅读视图按键。
+func (a *app) handleRecent(ev c1device.Event) bool {
+	n := len(a.recentBooks)
+	switch ev.Key {
+	case c1device.KeyUp:
+		if n > 0 && a.recentSel > 0 {
+			a.recentSel--
+			if a.recentSel < a.recentFirst {
+				a.recentFirst = a.recentSel
+			}
+		}
+	case c1device.KeyDown:
+		if n > 0 && a.recentSel < n-1 {
+			a.recentSel++
+			if a.recentSel >= a.recentFirst+listRows {
+				a.recentFirst = a.recentSel - listRows + 1
+			}
+		}
+	case c1device.KeyOK:
+		if n == 0 {
+			return false
+		}
+		r := a.recentBooks[a.recentSel]
+		// 书架中定位到该书，方便返回时选中一致
+		for i, b := range a.shelf {
+			if b.BookID == r.BookID {
+				a.shelfSel = i
+				if a.shelfSel >= a.shelfFirst+listRows {
+					a.shelfFirst = a.shelfSel - listRows + 1
+				}
+				break
+			}
+		}
+		a.openRecentBook(r)
+	case c1device.KeyLeft, c1device.KeyBack:
+		a.view = viewShelf
+	}
+	return false
+}
+
+// openRecentBook 从最近阅读打开一本书，复用带进度续读逻辑。
+func (a *app) openRecentBook(r recentBook) {
+	// 确保 progress 中存在该记录
+	a.progress[r.BookID] = bookProgress{ChapterIdx: r.ChapterIdx, Page: r.Page, Updated: r.Updated}
+	var book *weread.ShelfBook
+	for i := range a.shelf {
+		if a.shelf[i].BookID == r.BookID {
+			book = &a.shelf[i]
+			break
+		}
+	}
+	if book == nil {
+		// 不在当前书架时构造最小信息
+		book = &weread.ShelfBook{BookID: r.BookID, Title: r.Title}
+	}
+	a.openBook(*book)
 }
 
 // handleSettings 设置视图按键。
@@ -538,7 +850,7 @@ func (a *app) handleSettings(ev c1device.Event) bool {
 		settings := a.settings
 		switch a.settingsSel {
 		case 0:
-			fonts := []string{fontUnifont, fontFusion12, fontLXGW}
+			fonts := []string{fontUnifont, fontFusion12, fontLXGW, fontMiSans, fontNeoXiHei}
 			pick := 0
 			for i, f := range fonts {
 				if f == settings.Font {
@@ -642,7 +954,7 @@ func (a *app) applyReaderSettings(settings ReaderSettings, persist bool) error {
 			}
 			return fmt.Errorf("重读章节失败: %w", err)
 		}
-		pages, err := paginate(text, a.bodyFace)
+		pages, err := a.paginateChapter(text)
 		if err != nil {
 			a.bodyFace, a.fontData, a.settings = oldFace, oldData, oldSettings
 			if needFace {
