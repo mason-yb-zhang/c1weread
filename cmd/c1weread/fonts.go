@@ -31,11 +31,13 @@ const (
 
 var readerFontSizes = []int{12, 14, 16, 18, 20, 24}
 
-// ReaderSettings 阅读字体设置，持久化到 data/reader-settings.json。
+// ReaderSettings 阅读设置，持久化到 data/reader-settings.json。
+// Font/Size/Threshold 来自墨页字体栈；Rotate 为屏幕方向（与墨页一致）。
 type ReaderSettings struct {
-	Font      string `json:"font"`
-	Size      int    `json:"size"`
-	Threshold int    `json:"threshold"`
+	Font      string               `json:"font"`
+	Size      int                  `json:"size"`
+	Threshold int                  `json:"threshold"`
+	Rotate    c1device.Orientation `json:"rotate"`
 }
 
 func defaultReaderSettings() ReaderSettings {
@@ -70,6 +72,9 @@ func (s ReaderSettings) validate() error {
 	}
 	if s.Threshold < 32 || s.Threshold > 224 {
 		return fmt.Errorf("黑白阈值须在 32 至 224 之间")
+	}
+	if !s.Rotate.Valid() {
+		return fmt.Errorf("方向仅支持横屏/竖屏/倒置")
 	}
 	return nil
 }
@@ -278,4 +283,18 @@ func sanitizeMessage(s string) string {
 		}
 	}
 	return string(out)
+}
+
+// rotateLabel 方向显示名（与墨页设置文案一致）。
+func rotateLabel(o c1device.Orientation) string {
+	switch o {
+	case c1device.Rotate90:
+		return "竖屏顺时针"
+	case c1device.Rotate180:
+		return "横屏倒置"
+	case c1device.Rotate270:
+		return "竖屏逆时针"
+	default:
+		return "横屏"
+	}
 }

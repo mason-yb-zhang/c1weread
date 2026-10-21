@@ -265,6 +265,7 @@ func (a *app) syncShelf() {
 
 // handleEvent 分发按键；返回 true 表示退出。
 func (a *app) handleEvent(ev c1device.Event, cancel context.CancelFunc) bool {
+	ev.Key = a.orientation().RemapKey(ev.Key)
 	a.message = "" // 临时提示只存活到下一次按键（reader-lab 同款语义）
 	switch a.view {
 	case viewGuide:
@@ -613,7 +614,7 @@ func lastPage(a *app, idx int) int {
 	if err != nil {
 		return 0
 	}
-	pages, err := paginate(text, a.bodyFace, a.readerBodyHeight())
+	pages, err := paginateWidth(text, a.bodyFace, a.readerBodyWidthFor(), a.readerBodyHeight())
 	if err != nil || len(pages) == 0 {
 		return 0
 	}
@@ -628,17 +629,17 @@ func (a *app) readerBodyTop() int {
 	return rowH
 }
 
-// readerBodyHeight 返回当前正文区高度（全屏时为整屏减边距）。
+// readerBodyHeight 返回当前正文区高度（随方向变化；全屏时为整屏减边距）。
 func (a *app) readerBodyHeight() int {
 	if a.fullscreen {
-		return c1device.DisplayHeight - 2*4
+		return a.uiH() - 2*4
 	}
-	return readerBodyHeight
+	return a.uiH() - 2*rowH
 }
 
 // paginateChapter 使用当前正文区高度对当前章节分页。
 func (a *app) paginateChapter(text string) ([]Page, error) {
-	return paginate(text, a.bodyFace, a.readerBodyHeight())
+	return paginateWidth(text, a.bodyFace, a.readerBodyWidthFor(), a.readerBodyHeight())
 }
 
 // repageCurrentChapter 重新分页并尽量保持当前页首字节偏移。
@@ -839,7 +840,7 @@ func (a *app) handleSettings(ev c1device.Event) bool {
 			a.settingsSel--
 		}
 	case c1device.KeyDown:
-		if a.settingsSel < 2 {
+		if a.settingsSel < 3 {
 			a.settingsSel++
 		}
 	case c1device.KeyLeft, c1device.KeyRight:
@@ -895,6 +896,15 @@ func (a *app) handleSettings(ev c1device.Event) bool {
 			if settings.Threshold > 224 {
 				settings.Threshold = 224
 			}
+		case 3:
+			next := int(settings.Rotate) + delta
+			if next < 0 {
+				next = 3
+			}
+			if next > 3 {
+				next = 0
+			}
+			settings.Rotate = c1device.Orientation(next)
 		}
 		if settings != a.settings {
 			if err := a.applyReaderSettings(settings, true); err != nil {
@@ -922,7 +932,7 @@ func (a *app) applyReaderSettings(settings ReaderSettings, persist bool) error {
 			// 运行时字体缺失时回退到内嵌 Unifont
 			if settings.Font != fontUnifont {
 				a.message = sanitizeMessage(err.Error()) + "，已回退 Unifont"
-				settings = ReaderSettings{Font: fontUnifont, Size: 16, Threshold: settings.Threshold}
+				settings = ReaderSettings{Font: fontUnifont, Size: 16, Threshold: settings.Threshold, Rotate: settings.Rotate}
 				face, data, err = newReaderFace(settings)
 			}
 			if err != nil {
@@ -936,7 +946,7 @@ func (a *app) applyReaderSettings(settings ReaderSettings, persist bool) error {
 	oldFace, oldData, oldSettings := a.bodyFace, a.fontData, a.settings
 	a.bodyFace, a.fontData, a.settings = face, data, settings
 
-	if a.view == viewReader && a.currentBook != nil && a.catSel >= 0 && a.catSel < len(a.chapters) {
+	if a.currentBook != nil && a.catSel >= 0 && a.catSel < len(a.chapters) && (a.view == viewReader || a.view == viewSettings || a.view == viewCatalog) {
 		var offset int
 		if a.readerPage >= 0 && a.readerPage < len(a.pages) {
 			offset = a.pages[a.readerPage].Start

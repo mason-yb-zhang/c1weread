@@ -9,6 +9,10 @@ import (
 )
 
 const readerBodyWidth = c1device.DisplayWidth - 8
+
+// readerBodyWidthFor 当前方向正文折行宽度。
+func (a *app) readerBodyWidthFor() int { return a.uiW() - 8 }
+
 const readerBodyHeight = c1device.DisplayHeight - 2*rowH
 const readerFooterY = c1device.DisplayHeight - rowH
 
@@ -24,8 +28,13 @@ type positionedLine struct {
 	start, end int
 }
 
-// paginate 把一段 UTF-8 文本按给定 Face 的度量和指定阅读区高度分成若干页。
+// paginate 把一段 UTF-8 文本按给定 Face 的度量和指定阅读区高度分成若干页（横屏默认宽度）。
 func paginate(text string, face *c1device.Face, height int) ([]Page, error) {
+	return paginateWidth(text, face, readerBodyWidth, height)
+}
+
+// paginateWidth 同 paginate，可指定折行宽度（随屏幕方向变化）。
+func paginateWidth(text string, face *c1device.Face, width, height int) ([]Page, error) {
 	if face == nil {
 		return nil, fmt.Errorf("paginate: face is nil")
 	}
@@ -41,7 +50,10 @@ func paginate(text string, face *c1device.Face, height int) ([]Page, error) {
 		perPage = 1
 	}
 
-	lines, err := layoutLines(text, face, readerBodyWidth)
+	if width < 1 {
+		width = readerBodyWidth
+	}
+	lines, err := layoutLines(text, face, width)
 	if err != nil {
 		return nil, err
 	}
