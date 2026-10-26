@@ -10,10 +10,13 @@ import (
 	"strings"
 )
 
-// checkedBody 剥掉 32 字符大写 MD5 前缀并校验，短响应返回空串。
+// checkedBody 剥掉 32 字符大写 MD5 前缀并校验；32 字符可表示合法空分片。
 func checkedBody(responseText string) (string, error) {
-	if len(responseText) <= 32 {
+	if responseText == "" {
 		return "", nil
+	}
+	if len(responseText) < 32 {
+		return "", fmt.Errorf("分片响应过短: %d 字节", len(responseText))
 	}
 	expected := responseText[:32]
 	body := responseText[32:]
@@ -37,7 +40,7 @@ func decodeShards(e0, e1, e3 string) (string, error) {
 		}
 		parts = append(parts, body)
 	}
-	return decodeEncodedPayload(strings.Join(parts, "")), nil
+	return decodeEncodedPayload(strings.Join(parts, ""))
 }
 
 // swapPositions 从尾部 n=min(4,ceil(len/10)) 个字符算出换位下标表。
@@ -101,9 +104,9 @@ func reverseSwaps(encoded string, positions []int) string {
 }
 
 // decodeEncodedPayload 解码拼接后的负载：丢首字符 → 换位还原 → base64url → base64。
-func decodeEncodedPayload(encodedPayload string) string {
+func decodeEncodedPayload(encodedPayload string) (string, error) {
 	if encodedPayload == "" {
-		return ""
+		return "", nil
 	}
 	encodedPayload = encodedPayload[1:]
 	reordered := reverseSwaps(encodedPayload, swapPositions(encodedPayload))
@@ -120,9 +123,9 @@ func decodeEncodedPayload(encodedPayload string) string {
 	b64 += strings.Repeat("=", (4-len(b64)%4)%4)
 	data, err := base64.StdEncoding.DecodeString(b64)
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("正文 Base64 解码失败: %w", err)
 	}
-	return string(data)
+	return string(data), nil
 }
 
 // shardWithMD5 仅供测试/工具使用：给负载加 32 字符大写 MD5 前缀。

@@ -137,3 +137,39 @@ func loadProgress() (map[string]bookProgress, error) {
 func saveProgress(p map[string]bookProgress) error {
 	return atomicWrite(progressPath(), p)
 }
+
+// loadLocalShelf 从本地 manifest 构造离线书架；损坏或缺少目录的条目跳过。
+func loadLocalShelf() []weread.ShelfBook {
+	entries, err := os.ReadDir(filepath.Join(dataDir(), "books"))
+	if err != nil {
+		return nil
+	}
+	books := make([]weread.ShelfBook, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		m, err := loadManifest(entry.Name())
+		if err != nil || m == nil || m.BookID == "" || len(m.Chapters) == 0 {
+			continue
+		}
+		books = append(books, weread.ShelfBook{BookID: m.BookID, Title: m.Title, Author: m.Author})
+	}
+	return books
+}
+
+// mergeShelfBooks 保留在线书架顺序，并补充仅存在于本地的已下载书籍。
+func mergeShelfBooks(online, local []weread.ShelfBook) []weread.ShelfBook {
+	merged := make([]weread.ShelfBook, 0, len(online)+len(local))
+	seen := make(map[string]bool, len(online)+len(local))
+	for _, books := range [][]weread.ShelfBook{online, local} {
+		for _, book := range books {
+			if book.BookID == "" || seen[book.BookID] {
+				continue
+			}
+			seen[book.BookID] = true
+			merged = append(merged, book)
+		}
+	}
+	return merged
+}

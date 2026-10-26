@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -267,6 +268,9 @@ func (c *Client) FetchChapterText(bookID, chapterUID string) (text string, forma
 		} else {
 			text = HTMLToText(decoded)
 		}
+		if strings.TrimSpace(text) == "" {
+			return fmt.Errorf("weread: 章节正文解码后为空")
+		}
 		return nil
 	})
 	if err != nil {
@@ -352,7 +356,7 @@ func (c *Client) shardPost(bookID, chapterUID string, reader *ReaderState, endpo
 	return string(raw), nil
 }
 
-// fetchTXTChapter t_0 + t_1（t_1 失败容忍为空）。
+// fetchTXTChapter t_0 + t_1；任一分片失败都中止，避免保存残缺正文。
 func (c *Client) fetchTXTChapter(bookID, chapterUID string, reader *ReaderState) (string, error) {
 	t0, err := c.shardPost(bookID, chapterUID, reader, "/web/book/chapter/t_0")
 	if err != nil {
@@ -360,7 +364,7 @@ func (c *Client) fetchTXTChapter(bookID, chapterUID string, reader *ReaderState)
 	}
 	t1, err := c.shardPost(bookID, chapterUID, reader, "/web/book/chapter/t_1")
 	if err != nil {
-		t1 = ""
+		return "", fmt.Errorf("获取 TXT 分片 t_1: %w", err)
 	}
 	return decodeShards(t0, t1, "")
 }
