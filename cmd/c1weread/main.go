@@ -31,36 +31,54 @@ type recentBook struct {
 	Updated      int64
 }
 
+type shelfResult struct {
+	books []weread.ShelfBook
+	err   error
+}
+
+type downloadEvent struct {
+	total     int
+	done      int
+	book      *manifest
+	finished  bool
+	cancelled bool
+	err       error
+}
+
 type app struct {
-	face    *c1device.Face // UI 字体（内嵌 Unifont 16px）
+	face     *c1device.Face // UI 字体（内嵌 Unifont 16px）
 	bodyFace *c1device.Face // 正文字体
 	fontData *mappedFont    // TTF 运行时字体数据（Face 借用其 typeface）
-	client  *weread.Client
-	creds   *weread.Credentials
+	client   *weread.Client
+	creds    *weread.Credentials
 
-	view        viewMode
-	status      string // 书架状态行
-	errMsg      string
-	message     string // 阅读器/设置等临时提示
+	view    viewMode
+	status  string // 书架状态行
+	errMsg  string
+	message string // 阅读器/设置等临时提示
 
-	shelf             []weread.ShelfBook
-	shelfSel          int
-	shelfFirst        int
-	currentBook       *manifest
-	chapters          []chapterMeta
-	catSel            int
-	catFirst          int
-	downloadTotal     int
-	downloadDone      int
-	downloadCancelled bool
-	dlDone            chan error // 后台下载完成信号（nil=完成/取消；非 nil=失败原因）
-	pages             []Page     // 当前章分页结果
-	readerPage        int
-	readerTitle       string
-	fullscreen        bool       // 阅读器全屏模式（会话级，不持久化）
-	settings          ReaderSettings
-	settingsSel       int
-	progress          map[string]bookProgress
+	shelf       []weread.ShelfBook
+	shelfSel    int
+	shelfFirst  int
+	shelfDone   chan shelfResult
+	shelfOnline bool
+	currentBook *manifest
+	chapters    []chapterMeta
+	catSel      int
+	catFirst    int
+
+	downloadTotal  int
+	downloadDone   int
+	downloadCancel context.CancelFunc
+	dlEvents       chan downloadEvent
+
+	pages       []Page // 当前章分页结果
+	readerPage  int
+	readerTitle string
+	fullscreen  bool // 阅读器全屏模式（会话级，不持久化）
+	settings    ReaderSettings
+	settingsSel int
+	progress    map[string]bookProgress
 
 	recentBooks []recentBook
 	recentSel   int
@@ -150,9 +168,15 @@ func main() {
 		progress = make(map[string]bookProgress)
 	}
 
-	a := &app{face: face, bodyFace: bodyFace, fontData: fontData, settings: settings, creds: creds, progress: progress}
+	localShelf := loadLocalShelf()
+	a := &app{face: face, bodyFace: bodyFace, fontData: fontData, settings: settings, creds: creds, progress: progress, shelf: localShelf}
 	if creds == nil || creds.Cookies["wr_vid"] == "" {
-		a.view = viewGuide
+		if len(localShelf) == 0 {
+			a.view = viewGuide
+		} else {
+			a.view = viewShelf
+			a.status = "离线书库（未登录）"
+		}
 	} else {
 		a.view = viewShelf
 		a.setupClient()
@@ -179,9 +203,9 @@ func main() {
 	// 首帧全刷
 	_ = platform.Draw(a.render(), true)
 
-	// 书架异步同步
-	if a.view == viewShelf {
-		go a.syncShelf()
+	// 书架异步同步；本地书库在同步前及断网时仍可使用。
+	if a.view == viewShelf && a.client != nil {
+		a.startShelfSync()
 	}
 
 	for {
@@ -207,12 +231,44 @@ func main() {
 				return
 			}
 			dirty = true
-		case dlErr := <-a.dlDone:
-			// 后台下载结束：统一在主 goroutine 里切换视图
-			a.dlDone = nil
-			if dlErr != nil {
-				a.fail(dlErr.Error())
-			} else if a.downloadCancelled {
+		case result := <-a.shelfDone:
+			// 网络结果只在主 goroutine 合并，避免渲染和按键读写竞争。
+			a.shelfDone = nil
+			if result.err != nil {
+				a.shelfOnline = false
+				a.status = "同步失败（OK 重试）"
+				if len(a.shelf) > 0 {
+					a.status = "同步失败（离线书架）"
+				}
+			} else {
+				a.shelfOnline = true
+				a.shelf = mergeShelfBooks(result.books, loadLocalShelf())
+				a.status = ""
+				if len(a.shelf) == 0 {
+					a.shelfSel, a.shelfFirst = 0, 0
+				} else {
+					a.shelfSel = clamp(a.shelfSel, 0, len(a.shelf)-1)
+					a.shelfFirst = clamp(a.shelfFirst, 0, a.shelfSel)
+				}
+			}
+			dirty = true
+		case ev := <-a.dlEvents:
+			// 下载进度和最终状态同样只由主 goroutine 应用。
+			if !ev.finished {
+				a.downloadTotal, a.downloadDone = ev.total, ev.done
+				dirty = true
+				break
+			}
+			a.dlEvents = nil
+			a.downloadCancel = nil
+			if ev.book != nil {
+				a.currentBook = ev.book
+				a.chapters = ev.book.Chapters
+				a.refreshBookSizes()
+			}
+			if ev.err != nil {
+				a.fail(ev.err.Error())
+			} else if ev.cancelled {
 				a.view = viewShelf
 			} else if a.resumeChapter >= 0 {
 				idx := a.chapterIndexForIdx(a.resumeChapter)
@@ -251,16 +307,19 @@ func (a *app) setupClient() {
 	})
 }
 
-// syncShelf 后台同步书架。
-func (a *app) syncShelf() {
-	a.status = "同步中…"
-	books, err := a.client.Shelf()
-	if err != nil {
-		a.status = "同步失败（OK 重试）"
+// startShelfSync 启动后台请求；结果经 channel 交回主事件循环。
+func (a *app) startShelfSync() {
+	if a.client == nil || a.shelfDone != nil {
 		return
 	}
-	a.shelf = books
-	a.status = ""
+	a.status = "同步中…"
+	results := make(chan shelfResult, 1)
+	a.shelfDone = results
+	client := a.client
+	go func() {
+		books, err := client.Shelf()
+		results <- shelfResult{books: books, err: err}
+	}()
 }
 
 // handleEvent 分发按键；返回 true 表示退出。
@@ -288,8 +347,8 @@ func (a *app) handleEvent(ev c1device.Event, cancel context.CancelFunc) bool {
 			a.view = viewShelf
 		}
 	case viewDownload:
-		if ev.Key == c1device.KeyBack {
-			a.downloadCancelled = true
+		if ev.Key == c1device.KeyBack && a.downloadCancel != nil {
+			a.downloadCancel()
 		}
 	}
 	return false
@@ -314,9 +373,8 @@ func (a *app) handleShelf(ev c1device.Event, cancel context.CancelFunc) bool {
 			}
 		}
 	case c1device.KeyOK:
-		if a.status == "同步失败（OK 重试）" {
-			a.status = ""
-			go a.syncShelf()
+		if a.status == "同步失败（OK 重试）" && n == 0 {
+			a.startShelfSync()
 			return false
 		}
 		if n == 0 || a.shelf[a.shelfSel].Album {
@@ -356,7 +414,9 @@ func (a *app) openBook(book weread.ShelfBook) {
 	}
 
 	missing := a.missingChapters()
-	if hasProgress && missing == 0 {
+	// 在线时即使缓存完整也经过目录刷新，连载书才能看到新章节；
+	// 离线或尚未同步成功时优先直接恢复本地阅读。
+	if hasProgress && missing == 0 && !a.shelfOnline && a.shelfDone == nil {
 		idx := a.chapterIndexForIdx(p.ChapterIdx)
 		if idx >= 0 {
 			a.openChapter(idx, p.Page)
@@ -365,9 +425,12 @@ func (a *app) openBook(book weread.ShelfBook) {
 	}
 
 	a.view = viewDownload
-	a.downloadCancelled = false
-	a.dlDone = make(chan error, 1)
-	go a.downloadBook(m)
+	a.downloadTotal, a.downloadDone = len(m.Chapters), 0
+	downloadCtx, downloadCancel := context.WithCancel(context.Background())
+	a.downloadCancel = downloadCancel
+	events := make(chan downloadEvent, 1)
+	a.dlEvents = events
+	go a.downloadBook(downloadCtx, m, events)
 }
 
 // missingChapters 统计未落盘的章节数。
@@ -381,56 +444,81 @@ func (a *app) missingChapters() int {
 	return missing
 }
 
-// downloadBook 后台下载（或补全）全部章节；每章间隔 200ms。
-// 结果经 a.dlDone 汇报：nil=完成或用户取消（看 a.downloadCancelled），非 nil=失败原因。
-// 不在本函数里直接改视图，视图切换由主循环的 dlDone 分支统一处理。
-func (a *app) downloadBook(m *manifest) {
+// downloadBook 后台刷新目录并下载（或补全）全部章节；每章间隔 200ms。
+// 后台只读写本书数据并通过 events 汇报，所有 app 状态由主事件循环更新。
+func (a *app) downloadBook(ctx context.Context, m *manifest, events chan<- downloadEvent) {
+	emit := func(ev downloadEvent) {
+		ev.book = m
+		events <- ev
+	}
+	fail := func(err error) {
+		emit(downloadEvent{finished: true, err: err})
+	}
 	// panic 防护：下载在后台 goroutine 跑，崩了要留痕并回报失败而不是闪退。
 	defer func() {
 		if r := recover(); r != nil {
 			writeTrace("download panic: %v\n%s", r, debug.Stack())
-			a.dlDone <- fmt.Errorf("下载内部错误: %v", r)
+			fail(fmt.Errorf("下载内部错误: %v", r))
 		}
 	}()
-	// 拉章节表
-	if len(m.Chapters) == 0 {
+
+	// 有网络客户端时每次打开都刷新目录；失败则保留旧目录作为离线回退。
+	if a.client != nil {
 		infos, err := a.fetchInfosWithRetry(m.BookID)
-		if err != nil {
-			a.dlDone <- fmt.Errorf("获取目录失败: %w", err)
+		if err != nil && len(m.Chapters) == 0 {
+			fail(fmt.Errorf("获取目录失败: %w", err))
 			return
 		}
-		for _, info := range infos {
-			m.Chapters = append(m.Chapters, chapterMeta{UID: info.ChapterUID, Idx: info.ChapterIdx, Title: info.Title})
+		if err == nil {
+			if len(infos) == 0 {
+				fail(fmt.Errorf("获取目录失败: 服务端返回空目录"))
+				return
+			}
+			m.Chapters = mergeChapterInfos(infos)
+			m.TotalBytes = 0
+			if err := saveManifest(m); err != nil {
+				fail(fmt.Errorf("写 manifest 失败: %w", err))
+				return
+			}
 		}
-		if err := saveManifest(m); err != nil {
-			a.dlDone <- fmt.Errorf("写 manifest 失败: %w", err)
-			return
-		}
-		a.currentBook = m
-		a.chapters = m.Chapters
+	} else if len(m.Chapters) == 0 {
+		fail(fmt.Errorf("未登录且没有本地目录"))
+		return
 	}
-	a.downloadTotal = len(m.Chapters)
-	a.downloadDone = 0
+
+	done := 0
+	emit(downloadEvent{total: len(m.Chapters), done: done})
 	for _, ch := range m.Chapters {
-		if a.downloadCancelled {
-			a.dlDone <- nil
+		if ctx.Err() != nil {
+			emit(downloadEvent{finished: true, cancelled: true})
 			return
 		}
 		if _, err := chapterText(m, ch); err == nil {
-			a.downloadDone++
+			done++
+			emit(downloadEvent{total: len(m.Chapters), done: done})
 			continue
+		}
+		if a.client == nil {
+			fail(fmt.Errorf("章节「%s」未下载，当前未登录", ch.Title))
+			return
 		}
 		text, _, err := a.fetchChapterWithRetry(m.BookID, ch.UID)
 		if err != nil {
-			a.dlDone <- fmt.Errorf("下载章节「%s」失败: %w", ch.Title, err)
+			fail(fmt.Errorf("下载章节「%s」失败: %w", ch.Title, err))
 			return
 		}
 		if err := writeChapterText(m, ch, text); err != nil {
-			a.dlDone <- fmt.Errorf("保存章节失败: %w", err)
+			fail(fmt.Errorf("保存章节失败: %w", err))
 			return
 		}
-		a.downloadDone++
-		time.Sleep(200 * time.Millisecond)
+		done++
+		emit(downloadEvent{total: len(m.Chapters), done: done})
+		select {
+		case <-ctx.Done():
+			emit(downloadEvent{finished: true, cancelled: true})
+			return
+		case <-time.After(200 * time.Millisecond):
+		}
 	}
 	// 整本下载完成：记录全书总字节（顶栏百分比用），写失败不阻塞（可退回章节比例估算）。
 	var total int64
@@ -443,11 +531,18 @@ func (a *app) downloadBook(m *manifest) {
 		m.TotalBytes = total
 		if err := saveManifest(m); err != nil {
 			writeTrace("save manifest totalBytes: %v", err)
-		} else {
-			a.currentBook = m
 		}
 	}
-	a.dlDone <- nil
+	emit(downloadEvent{total: len(m.Chapters), done: done, finished: true})
+}
+
+// mergeChapterInfos 用服务端目录替换章节顺序和元数据；UID/Idx 不变的缓存文件继续有效。
+func mergeChapterInfos(infos []weread.ChapterInfo) []chapterMeta {
+	chapters := make([]chapterMeta, 0, len(infos))
+	for _, info := range infos {
+		chapters = append(chapters, chapterMeta{UID: info.ChapterUID, Idx: info.ChapterIdx, Title: info.Title})
+	}
+	return chapters
 }
 
 // fetchInfosWithRetry 带 renewal 重试的目录拉取。
