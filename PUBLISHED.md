@@ -97,3 +97,14 @@ c1publish.exe -token-file D:\dev\c1-slim\tokens\masonzhang.token -allow-insecure
 | 二进制 SHA256 | `31324800742292e9aa88dbd53d90831a19693a64de5d6116b1537ea502e1bd18`（payload/bin/c1weread） |
 | 模式 | `-mode direct`（显式携带） |
 | 服务端 | 已确认（next=0.1.4） |
+
+## 2026-10-26：0.1.4 上架（本机 masonzhang 令牌）
+
+| 项 | 值 |
+|---|---|
+| 版本 | **0.1.4** |
+| 内容 | d8d4826：屏幕方向设置 + 缓存完整性/并发/离线阅读修复 + 目录刷新 + 回归测试 |
+| 二进制 SHA256 | `d1348e752faa65ac980ac3d34dbc27e0ec3d4cc35a84d5a83c489356f3b454ec`（payload/bin/c1weread） |
+| 模式 | `-mode direct`（显式携带） |
+| 服务端 | 已确认（next=0.1.5） |
+| 设备 | 同二进制已部署 local-apps（manifest 校验一致） |
