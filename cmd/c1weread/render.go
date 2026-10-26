@@ -6,6 +6,7 @@ import (
 	"image"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"c1device"
 )
@@ -245,7 +246,7 @@ func (a *app) renderReader(c *c1device.Canvas) {
 		c.DrawInvertedTextBar(a.face, image.Rect(0, (a.uiH()-rowH), a.uiW(), a.uiH()),
 			truncateToWidth(a.face, a.message, a.uiW()-4))
 	} else {
-		drawNavFooter(c, a.face, (a.uiH()-rowH), "←目录", "↑↓翻页", "OK全屏", "S设置")
+		drawNavFooter(c, a.face, (a.uiH() - rowH), "←目录", "↑↓翻页", "OK全屏", "S设置")
 	}
 }
 
@@ -351,8 +352,9 @@ func truncateToWidth(face *c1device.Face, s string, width int) string {
 	if face.Measure(s) <= width {
 		return s
 	}
-	for len(s) > 1 {
-		s = s[:len(s)-1]
+	for len(s) > 0 {
+		_, size := utf8.DecodeLastRuneInString(s)
+		s = s[:len(s)-size]
 		if face.Measure(s+"…") <= width {
 			return s + "…"
 		}
@@ -395,6 +397,9 @@ func chapterText(m *manifest, ch chapterMeta) (string, error) {
 	data, err := os.ReadFile(chapterFile(m.BookID, ch))
 	if err != nil {
 		return "", err
+	}
+	if len(data) == 0 {
+		return "", fmt.Errorf("章节缓存为空")
 	}
 	return string(data), nil
 }

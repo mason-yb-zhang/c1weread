@@ -116,12 +116,11 @@ func TestPreview(t *testing.T) {
 			errMsg: "下载章节「第二章 转机」失败: weread: errCode=-2012 errMsg=登录超时",
 		}},
 		{"download", &app{
-			face:              face,
-			view:              viewDownload,
-			currentBook:       &manifest{BookID: "43208843", Title: "持续交付2.0"},
-			downloadTotal:     20,
-			downloadDone:      7,
-			downloadCancelled: false,
+			face:          face,
+			view:          viewDownload,
+			currentBook:   &manifest{BookID: "43208843", Title: "持续交付2.0"},
+			downloadTotal: 20,
+			downloadDone:  7,
 		}},
 	}
 

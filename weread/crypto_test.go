@@ -88,7 +88,10 @@ func TestSortedQueryVectors(t *testing.T) {
 func TestDecodeEncodedPayloadVectors(t *testing.T) {
 	vf := loadVectors(t)
 	for _, tc := range vf.Decode {
-		if got := decodeEncodedPayload(tc.Encoded); got != tc.Want {
+		got, err := decodeEncodedPayload(tc.Encoded)
+		if err != nil {
+			t.Errorf("decodeEncodedPayload error: %v", err)
+		} else if got != tc.Want {
 			t.Errorf("decodeEncodedPayload mismatch:\n got %q\nwant %q", got, tc.Want)
 		}
 	}

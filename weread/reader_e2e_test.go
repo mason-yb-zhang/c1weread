@@ -34,7 +34,10 @@ func TestEncodeForTestRoundtrip(t *testing.T) {
 		"一段比较长的文本，用来验证编码解码互逆。包含 unicode：中文、é、🎉。",
 	} {
 		encoded := encodeForTest(plain)
-		if got := decodeEncodedPayload(encoded); got != plain {
+		got, err := decodeEncodedPayload(encoded)
+		if err != nil {
+			t.Errorf("roundtrip %q returned error: %v", plain, err)
+		} else if got != plain {
 			t.Errorf("roundtrip failed: %q -> %q", plain, got)
 		}
 	}
@@ -224,5 +227,44 @@ func TestFetchChapterTextRenewalRetry(t *testing.T) {
 	}
 	if readerCalls != 2 {
 		t.Errorf("readerCalls = %d, want 2", readerCalls)
+	}
+}
+
+func TestFetchChapterTextRejectsInvalidOrEmptyPayload(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		payload string
+	}{
+		{name: "invalid base64", payload: "A!!!"},
+		{name: "empty chapter", payload: ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mux := http.NewServeMux()
+			mux.HandleFunc("/web/reader/", func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, `<script>window.__INITIAL_STATE__ = {"reader":{"bookInfo":{"bookId":"43208843"},"psvts":"p1"}};(function(){})()</script>`)
+			})
+			for _, endpoint := range []string{"/web/book/chapter/e_0", "/web/book/chapter/e_1", "/web/book/chapter/e_3"} {
+				mux.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
+					w.Write([]byte(shardWithMD5(tc.payload)))
+				})
+			}
+			srv := httptest.NewServer(mux)
+			defer srv.Close()
+			c := newTestClient(srv)
+
+			text, _, err := c.FetchChapterText("43208843", "1002")
+			if err == nil {
+				t.Fatalf("FetchChapterText() = %q, nil; want error", text)
+			}
+		})
+	}
+}
+
+func TestCheckedBodyRejectsMalformedShortShard(t *testing.T) {
+	if _, err := checkedBody("too-short"); err == nil {
+		t.Fatal("checkedBody() accepted malformed short shard")
+	}
+	if body, err := checkedBody(shardWithMD5("")); err != nil || body != "" {
+		t.Fatalf("valid empty shard = %q, %v", body, err)
 	}
 }
