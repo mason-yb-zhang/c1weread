@@ -269,7 +269,14 @@ func (c *Client) FetchChapterText(bookID, chapterUID string) (text string, forma
 			text = HTMLToText(decoded)
 		}
 		if strings.TrimSpace(text) == "" {
-			return fmt.Errorf("weread: 章节正文解码后为空")
+			// 空白过渡章和图片章也是有效章节，不能让整本缓存因此中止。
+			// 空章写入一个换行，区别于下载/解码失败产生的零字节缓存。
+			lowerDecoded := strings.ToLower(decoded)
+			if strings.Contains(lowerDecoded, "<img") || strings.Contains(lowerDecoded, "<image") {
+				text = "【本章为图片内容，当前版本暂不支持显示】"
+			} else if text == "" {
+				text = "\n"
+			}
 		}
 		return nil
 	})

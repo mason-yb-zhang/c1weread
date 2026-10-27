@@ -117,7 +117,13 @@ func decodeEncodedPayload(encodedPayload string) (string, error) {
 		c := reordered[i]
 		if (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '+' || c == '/' {
 			b.WriteByte(c)
+			continue
 		}
+		// 忽略原有的 padding 和 ASCII 空白；其他字符说明负载损坏，不能静默删成另一段正文。
+		if c == '=' || c == ' ' || c == '\t' || c == '\r' || c == '\n' {
+			continue
+		}
+		return "", fmt.Errorf("正文 Base64 解码失败: 非法字符 %q", c)
 	}
 	b64 := b.String()
 	b64 += strings.Repeat("=", (4-len(b64)%4)%4)

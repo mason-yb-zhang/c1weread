@@ -230,22 +230,55 @@ func TestFetchChapterTextRenewalRetry(t *testing.T) {
 	}
 }
 
-func TestFetchChapterTextRejectsInvalidOrEmptyPayload(t *testing.T) {
+func TestFetchChapterTextRejectsInvalidPayload(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/web/reader/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, `<script>window.__INITIAL_STATE__ = {"reader":{"bookInfo":{"bookId":"43208843"},"psvts":"p1"}};(function(){})()</script>`)
+	})
+	for _, endpoint := range []string{"/web/book/chapter/e_0", "/web/book/chapter/e_1", "/web/book/chapter/e_3"} {
+		mux.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte(shardWithMD5("A!!!")))
+		})
+	}
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	c := newTestClient(srv)
+
+	text, _, err := c.FetchChapterText("43208843", "1002")
+	if err == nil {
+		t.Fatalf("FetchChapterText() = %q, nil; want error", text)
+	}
+}
+
+func TestFetchChapterTextAcceptsBlankAndImageOnlyChapters(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		payload string
+		want    string
+		raw     bool
 	}{
-		{name: "invalid base64", payload: "A!!!"},
-		{name: "empty chapter", payload: ""},
+		{name: "empty shards", payload: "", want: "\n", raw: true},
+		{name: "blank chapter", payload: "", want: "\n"},
+		{name: "blank xhtml", payload: "<html><body><p>  </p></body></html>", want: "\n"},
+		{name: "image only", payload: `<html><body><p><img src="p1.jpg"/></p></body></html>`, want: "【本章为图片内容，当前版本暂不支持显示】"},
+		{name: "svg image only", payload: `<html><body><svg><image href="p2.jpg"/></svg></body></html>`, want: "【本章为图片内容，当前版本暂不支持显示】"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			payload := encodeForTest(tc.payload)
+			if tc.raw {
+				payload = tc.payload
+			}
 			mux := http.NewServeMux()
 			mux.HandleFunc("/web/reader/", func(w http.ResponseWriter, r *http.Request) {
 				fmt.Fprint(w, `<script>window.__INITIAL_STATE__ = {"reader":{"bookInfo":{"bookId":"43208843"},"psvts":"p1"}};(function(){})()</script>`)
 			})
 			for _, endpoint := range []string{"/web/book/chapter/e_0", "/web/book/chapter/e_1", "/web/book/chapter/e_3"} {
 				mux.HandleFunc(endpoint, func(w http.ResponseWriter, r *http.Request) {
-					w.Write([]byte(shardWithMD5(tc.payload)))
+					shard := ""
+					if endpoint == "/web/book/chapter/e_0" {
+						shard = payload
+					}
+					w.Write([]byte(shardWithMD5(shard)))
 				})
 			}
 			srv := httptest.NewServer(mux)
@@ -253,8 +286,11 @@ func TestFetchChapterTextRejectsInvalidOrEmptyPayload(t *testing.T) {
 			c := newTestClient(srv)
 
 			text, _, err := c.FetchChapterText("43208843", "1002")
-			if err == nil {
-				t.Fatalf("FetchChapterText() = %q, nil; want error", text)
+			if err != nil {
+				t.Fatalf("FetchChapterText() error: %v", err)
+			}
+			if text != tc.want {
+				t.Fatalf("FetchChapterText() = %q, want %q", text, tc.want)
 			}
 		})
 	}
